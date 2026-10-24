@@ -16,7 +16,7 @@ import { ReaderOverlay } from "../content/overlay";
 import { ProfileBar } from "./profileBar";
 import { mountAiSettings } from "./aiSettings";
 import { loadDevicePrefs, saveDevicePrefs } from "../settings";
-import { classify } from "../reader-core/words";
+import { classify, type Word } from "../reader-core/words";
 import { readsWholeLine } from "../content/lines";
 import { FONT_LABELS, type ReaderFont } from "../reader-core/fonts";
 import {
@@ -32,10 +32,13 @@ import {
   type Settings,
 } from "../settings";
 
-const SAMPLE =
-  "The highlighted letter marks the optimal recognition point, the exact position your brain uses to identify a whole word at once.";
-
-const SAMPLE_WORDS = SAMPLE.split(/\s+/).filter(Boolean).map(classify);
+const SAMPLES: Record<string, Word[]> = Object.fromEntries(
+  Object.entries({
+    en: "The highlighted letter marks the optimal recognition point, the exact position your brain uses to identify a whole word at once.",
+    hi: "नमस्ते! मैं हिन्दी सीख रहा हूँ।",
+    bn: "নমস্কার! আমি বাংলা শিখছি।",
+  }).map(([language, text]) => [language, text.split(/\s+/).map(classify)]),
+);
 
 type Group = "reading" | "appearance" | "captions";
 
@@ -347,7 +350,16 @@ const FIELDS: Field[] = [
       { value: "de", label: "Deutsch" },
       { value: "fr", label: "Français" },
       { value: "es", label: "Español" },
+      { value: "hi", label: "हिन्दी (Hindi)" },
+      { value: "bn", label: "বাংলা (Bengali)" },
     ],
+  },
+  {
+    kind: "toggle",
+    key: "romanize",
+    group: "captions",
+    label: "Romanize Hindi and Bengali",
+    help: "Show Latin letters with diacritics instead of Devanagari or Bangla script.",
   },
 ];
 
@@ -645,14 +657,15 @@ function runPreview(): void {
   );
 
   window.setInterval(() => {
-    previewIndex = (previewIndex + 1) % SAMPLE_WORDS.length;
+    const words = SAMPLES[settings.language] ?? SAMPLES.en;
+    previewIndex = (previewIndex + 1) % words.length;
     overlay?.render({
-      current: SAMPLE_WORDS[previewIndex],
-      previous: SAMPLE_WORDS.slice(
+      current: words[previewIndex],
+      previous: words.slice(
         Math.max(0, previewIndex - settings.contextBefore),
         previewIndex,
       ),
-      upcoming: SAMPLE_WORDS.slice(
+      upcoming: words.slice(
         previewIndex + 1,
         previewIndex + 1 + settings.contextAfter,
       ),
