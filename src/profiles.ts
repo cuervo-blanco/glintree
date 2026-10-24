@@ -17,11 +17,14 @@ import { DEFAULTS, saveSettings, type Settings } from "./settings";
 /**
  * The slice of `Settings` a profile carries.
  *
- * `enabled` and `language` are about *this user*, not about a reading style.
- * Switching profile must never silently turn the reader off or change which
- * caption track it picks — those would look like bugs, not like a theme change.
+ * `enabled`, `language` and `romanize` belong to the user. Switching a reading
+ * style must not change whether the reader runs or which language and script
+ * the user reads.
  */
-export type ProfileSettings = Omit<Settings, "enabled" | "language">;
+export type ProfileSettings = Omit<
+  Settings,
+  "enabled" | "language" | "romanize"
+>;
 
 /**
  * Every key a profile owns.
