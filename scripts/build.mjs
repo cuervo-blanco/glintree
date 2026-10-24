@@ -48,6 +48,10 @@ async function buildCss() {
     resolve(root, "src/content/reader.css"),
     "utf8",
   );
+  const controls = await readFile(
+    resolve(root, "src/content/controls.css"),
+    "utf8",
+  );
   const fonts = await readFile(
     resolve(root, "src/reader-core/fonts.css"),
     "utf8",
@@ -58,7 +62,7 @@ async function buildCss() {
   const scoped = fonts.replace(/url\("\/fonts\//g, 'url("fonts/');
   await writeFile(
     resolve(outdir, "reader.css"),
-    `${scoped}\n\n${reader}`,
+    `${scoped}\n\n${reader}\n\n${controls}`,
     "utf8",
   );
 
