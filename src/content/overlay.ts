@@ -9,7 +9,7 @@
  * into fullscreen and theatre mode without any code to handle either.
  */
 
-import { splitAtOrp } from "../reader-core/orp";
+import { graphemes, splitAtReadingOrp } from "./graphemes";
 import {
   wordExtentCh,
   wordExtentPx,
@@ -19,6 +19,7 @@ import {
 import { FONT_STACKS, isMonospace } from "../reader-core/fonts";
 import type { Word } from "../reader-core/words";
 import type { Settings } from "../settings";
+import { romanize } from "./romanize";
 
 /** Fraction of a word rendered bold in Bionic mode. */
 const BIONIC_LEAD = 0.42;
@@ -266,6 +267,19 @@ export class ReaderOverlay {
     this.root.classList.remove("trf-idle");
     this.root.classList.remove("trf-hidden");
 
+    if (this.settings.romanize) {
+      const display = (word: Word): Word => ({
+        ...word,
+        text: romanize(word.text),
+      });
+      view = {
+        ...view,
+        current: display(view.current),
+        previous: view.previous.map(display),
+        upcoming: view.upcoming.map(display),
+      };
+    }
+
     switch (this.settings.mode) {
       case "rsvp":
         this.renderRsvp(view, false);
@@ -336,7 +350,7 @@ export class ReaderOverlay {
    */
   private renderRsvp(view: ReaderView, bionicContext: boolean): void {
     const text = view.current!.text;
-    const { before, pivot, after } = splitAtOrp(text);
+    const { before, pivot, after } = splitAtReadingOrp(text);
     const pivotEl = pivotSpan(pivot);
 
     this.wordEl.replaceChildren(
@@ -345,9 +359,12 @@ export class ReaderOverlay {
       document.createTextNode(after),
     );
 
-    // Han fallback glyphs do not inherit monospace widths.
-    const han = /\p{Script=Han}/u.test(text);
-    const mono = isMonospace(this.settings.font) && !han;
+    // Fallback faces and combining marks do not inherit monospace widths.
+    const shaped =
+      /[\p{Script=Han}\p{Script=Devanagari}\p{Script=Bengali}\p{M}]/u.test(
+        text,
+      );
+    const mono = isMonospace(this.settings.font) && !shaped;
     /*
      * Style and weight belong in the string, not just size and family.
      *
@@ -364,9 +381,9 @@ export class ReaderOverlay {
     // Context words are placed against the focus word's real edges. Anchoring
     // them a fixed distance from the focal column instead lets a long word run
     // straight over them, which is what turned "brain uses to" into a pile-up.
-    // Canvas and the DOM can disagree on Han fallback widths. Use the rendered
+    // Canvas and the DOM can disagree on shaped widths. Use the rendered
     // glyph when layout is available; its box includes trailing letter-spacing.
-    const box = han ? this.wordEl.getBoundingClientRect() : null;
+    const box = shaped ? this.wordEl.getBoundingClientRect() : null;
     let extent: WordExtent;
     if (box?.width) {
       const glyph = pivotEl.getBoundingClientRect();
@@ -447,7 +464,7 @@ export class ReaderOverlay {
  * depending on which mode you happen to be in.
  */
 function fillBionic(target: HTMLElement, text: string): void {
-  const chars = [...text];
+  const chars = graphemes(text);
   const lead = Math.max(1, Math.round(chars.length * BIONIC_LEAD));
   const bold = document.createElement("b");
   bold.textContent = chars.slice(0, lead).join("");
