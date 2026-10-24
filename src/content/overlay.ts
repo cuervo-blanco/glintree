@@ -20,6 +20,7 @@ import { FONT_STACKS, isMonospace } from "../reader-core/fonts";
 import type { Word } from "../reader-core/words";
 import type { Settings } from "../settings";
 import { romanize } from "./romanize";
+import type { ReaderControls } from "./controls";
 
 /** Fraction of a word rendered bold in Bionic mode. */
 const BIONIC_LEAD = 0.42;
@@ -67,8 +68,12 @@ export class ReaderOverlay {
   private lastKey: string | null = null;
   private resize: ResizeObserver | null = null;
   private scale = 1;
+  private controls?: ReaderControls;
 
-  constructor(settings: Settings) {
+  constructor(
+    settings: Settings,
+    attachControls?: (root: HTMLElement) => ReaderControls,
+  ) {
     this.settings = settings;
 
     this.root = document.createElement("div");
@@ -101,6 +106,7 @@ export class ReaderOverlay {
     );
     this.root.append(this.stage);
     this.apply(settings);
+    this.controls = attachControls?.(this.root);
   }
 
   /** Attach to the player. Idempotent, so repeated navigation cannot stack
@@ -132,6 +138,7 @@ export class ReaderOverlay {
   }
 
   destroy(): void {
+    this.controls?.destroy();
     this.resize?.disconnect();
     this.resize = null;
     this.root.remove();
@@ -155,6 +162,7 @@ export class ReaderOverlay {
     // place; `ch` offsets scale with the font and are unaffected.
     clearPivotCache();
     this.lastKey = null;
+    this.controls?.layout();
   }
 
   apply(settings: Settings): void {
@@ -228,6 +236,7 @@ export class ReaderOverlay {
 
     // Sets `--trf-size` from the size setting and the player's current height.
     const player = this.root.parentElement;
+    this.controls?.apply(settings);
     this.rescale(player instanceof HTMLElement ? player : null);
   }
 
@@ -238,7 +247,9 @@ export class ReaderOverlay {
    * and a card sitting over someone else's video is just clutter.
    */
   setHidden(hidden: boolean): void {
+    if (this.root.classList.contains("trf-hidden") === hidden) return;
     this.root.classList.toggle("trf-hidden", hidden);
+    if (!hidden) this.controls?.layout();
   }
 
   /** Nothing is playing, or no word covers this moment. */
