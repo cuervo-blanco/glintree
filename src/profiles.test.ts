@@ -117,15 +117,17 @@ describe("applying a profile", () => {
     }
   });
 
-  // `enabled` and `language` belong to the user, not to the reading style. A
-  // profile that turned the reader back on, or switched caption language, would
-  // read as a bug rather than as a theme change.
-  it("leaves enabled and language alone", async () => {
-    await chrome.storage.sync.set({ enabled: false, language: "nl" });
+  it("leaves the user's language and script preferences alone", async () => {
+    await chrome.storage.sync.set({
+      enabled: false,
+      language: "hi",
+      romanize: true,
+    });
     await applyProfile(byId("obsidian"));
     const settings = await loadSettings();
     expect(settings.enabled).toBe(false);
-    expect(settings.language).toBe("nl");
+    expect(settings.language).toBe("hi");
+    expect(settings.romanize).toBe(true);
   });
 
   it("records the profile as active", async () => {
@@ -151,7 +153,12 @@ describe("modification tracking", () => {
     await applyProfile(preset);
     const applied = await loadSettings();
     expect(
-      isModified(preset, { ...applied, enabled: false, language: "de" }),
+      isModified(preset, {
+        ...applied,
+        enabled: false,
+        language: "bn",
+        romanize: true,
+      }),
     ).toBe(false);
   });
 });
@@ -180,11 +187,13 @@ describe("custom profiles", () => {
     );
   });
 
-  it("stores only the profile keys, never enabled or language", async () => {
+  it("stores only the profile keys", async () => {
     const settings = await loadSettings();
     const saved = await saveAsProfile("Trimmed", {
       ...settings,
       enabled: false,
+      language: "bn",
+      romanize: true,
     });
     const stored = (await loadProfiles()).all.find((p) => p.id === saved.id);
     expect(Object.keys(stored!.settings).sort()).toEqual(
