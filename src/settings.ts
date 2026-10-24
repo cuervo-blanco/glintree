@@ -164,6 +164,7 @@ export interface Settings {
   readerInReadMode: boolean;
   /** Preferred caption language, as a BCP-47 prefix. */
   language: string;
+  romanize: boolean;
 }
 
 /**
@@ -207,6 +208,7 @@ export const DEFAULTS: Settings = {
   hideNativeCaptions: true,
   readerInReadMode: true,
   language: "en",
+  romanize: false,
 };
 
 export async function loadSettings(): Promise<Settings> {
