@@ -21,6 +21,7 @@ import {
   type TimedWord,
 } from "./captions";
 import { ReaderOverlay } from "./overlay";
+import { nativeCaptionSource, type CaptionSource } from "./captionSource";
 import { buildLines, lineAt, readsWholeLine, type Line } from "./lines";
 import { adAction, isAdShowing } from "./ads";
 import {
@@ -60,7 +61,7 @@ let settings: Settings = DEFAULTS;
 let session: Session | null = null;
 let tracks: CaptionTrack[] = [];
 /** Caption payloads seen for the current video, newest last. */
-let pendingBodies: string[] = [];
+let pendingBodies: CaptionSource[] = [];
 let currentVideoId: string | null = null;
 /** Whether an ad is on screen right now. See `ads.ts`. */
 let adShowing = false;
@@ -123,7 +124,7 @@ window.addEventListener("message", (event: MessageEvent) => {
   } else if (data.kind === "timedtext") {
     const { url, body } = data.payload as { url?: string; body: string };
     if (body && belongsToCurrentVideo(url)) {
-      pendingBodies.push(body);
+      pendingBodies.push({ url, body });
       void start();
     }
   }
@@ -157,43 +158,44 @@ function requestRescan(): void {
 /* ── caption acquisition ────────────────────────────────────────────────── */
 
 /**
- * Three routes, tried in order of how much they give us.
- *
- * Fetching the track ourselves works without the viewer switching captions on,
- * but YouTube increasingly signs these URLs and can refuse. The player's own
- * response always carries whatever signature is currently required, but only
- * exists once captions are enabled. Neither is guaranteed, so both are tried
- * and failure is quiet.
+ * The player's captured text or signed URL comes first. Track URLs can lack
+ * the proof-of-origin token and return HTTP 200 with an empty body, so judge
+ * success by whether words came out rather than by the status alone.
  */
 async function collectWords(): Promise<TimedWord[]> {
   const track = pickTrack(tracks, settings.language);
+  const cache = pendingBodies;
+  const sources = [...cache].reverse().flatMap((source) => {
+    const native = nativeCaptionSource(source, track?.languageCode);
+    return native ? [native] : [];
+  });
   if (track) {
     for (const format of ["json3", ""]) {
       try {
         const url = new URL(track.baseUrl);
         if (format) url.searchParams.set("fmt", format);
-        const response = await fetch(url.toString(), {
-          credentials: "include",
-        });
-        // Note the missing `!response.ok` shortcut. Requesting a caption track
-        // without the proof-of-origin token the player attaches returns
-        // **HTTP 200 with an empty body**, not an error — verified against a
-        // live video. Anything that trusted the status code here would decide
-        // it had captions and then render nothing, so success is judged by
-        // whether words actually came out.
-        if (!response.ok) continue;
-        const words = parseCaptions(await response.text());
-        if (words.length > 0) return words;
+        sources.push({ url: url.toString(), body: "" });
       } catch {
-        // Network refusal: fall through to what the player fetched for itself.
+        // A malformed track must not discard a usable captured response.
       }
     }
   }
 
-  // Newest first: a later payload is likelier to be the track now on screen.
-  for (const body of [...pendingBodies].reverse()) {
-    const words = parseCaptions(body);
-    if (words.length > 0) return words;
+  for (const source of sources) {
+    try {
+      let { body } = source;
+      if (!body && source.url) {
+        const response = await fetch(source.url, { credentials: "include" });
+        if (!response.ok) continue;
+        body = await response.text();
+      }
+      const words = parseCaptions(body);
+      if (words.length === 0) continue;
+      if (!source.body) cache.push({ url: source.url, body });
+      return words;
+    } catch {
+      // A signed URL can expire; try the remaining sources.
+    }
   }
   return [];
 }
@@ -257,6 +259,7 @@ async function start(): Promise<void> {
     video: found.video,
     ...track(found.video, usable, overlay),
   };
+  session.redraw();
 
   // Only now: before this, there was no transcript to open Read Mode with.
   maybeAutoEnter();
@@ -656,9 +659,11 @@ async function init(): Promise<void> {
     // Toggling it while read mode is open should take effect immediately.
     readerSuppressed = isReadModeOpen() && !next.readerInReadMode;
 
-    // Filler removal is applied when the word list is built, not when it is
-    // read, so this one setting cannot be handled by redrawing. Rebuild instead.
-    if (previous.removeFillers !== next.removeFillers) {
+    // The language and filler filter decide the transcript, not its appearance.
+    if (
+      previous.removeFillers !== next.removeFillers ||
+      previous.language !== next.language
+    ) {
       teardown();
       void start();
       return;
