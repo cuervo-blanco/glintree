@@ -363,6 +363,18 @@ every control can be judged by looking at it.
 
 Defaults match the desktop app so the two feel like one product.
 
+### Hindi and Bengali
+
+Choose **हिन्दी (Hindi)** or **বাংলা (Bengali)** under **Preferred language**
+when a video offers those captions. Native script is the default; turn on
+**Romanize Hindi and Bengali** to read Latin letters with diacritics in any
+reader mode. The preview follows the selected language.
+
+Romanization happens locally and follows the spelling, including inherent
+vowels: भारत becomes _bhārata_, and বাংলা becomes _bāṁlā_. It does not infer
+pronunciation. Caption timings and the original study transcript stay intact,
+and switching reading profiles preserves the language and romanization choice.
+
 ## Privacy and data
 
 **The reader itself never sends anything anywhere.** Caption tracks are read
@@ -392,14 +404,14 @@ Delete the key and the extension goes back to sending nothing. Full detail in
 **YouTube's caption plumbing is not a public API.** It changes, and this
 extension reads it three ways so that one change does not break everything:
 
-1. **Fetch the caption track directly**, from the URL in the page's player
+1. **Capture what the player fetches for itself.** A page-context script hooks
+   `fetch` and `XMLHttpRequest` for `/api/timedtext`. Prefer this signed response,
+   requesting the original track through the same URL if auto-translation is on.
+2. **Fetch the caption track directly**, from the URL in the page's player
    response. Works without the viewer turning captions on — when it works.
-2. **Capture what the player fetches for itself.** A page-context script hooks
-   `fetch` and `XMLHttpRequest` for `/api/timedtext`. Always correctly signed,
-   but only fires once captions are switched on.
 3. Failing both, the extension does nothing at all.
 
-Route 1 is already unreliable. Requesting a caption track without the
+Direct requests are already unreliable. Requesting a caption track without the
 proof-of-origin token the player attaches returns **HTTP 200 with an empty
 body** — verified against a live video — rather than an error. Anything trusting
 the status code would conclude it had captions and then render nothing, which is
@@ -409,6 +421,11 @@ why success here is judged on whether words actually came out.
 per-word offset, which is exactly what this needs. Manually uploaded ones
 usually give a whole phrase per cue, so those are interpolated across the cue by
 character count — good enough to read along with, but not as tight.
+
+**Translation is not word-for-word speech alignment.** The reader uses the
+selected source track rather than silently accepting YouTube's translated
+captions. Romanization changes the letters while keeping the original words
+and timestamps.
 
 **Videos with no captions do nothing.** That is deliberate: there is no
 transcription here, so there is nothing to fall back to.
