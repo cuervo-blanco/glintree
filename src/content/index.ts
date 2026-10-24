@@ -21,6 +21,7 @@ import {
   type TimedWord,
 } from "./captions";
 import { ReaderOverlay } from "./overlay";
+import { ReaderControls } from "./controls";
 import { nativeCaptionSource, type CaptionSource } from "./captionSource";
 import { buildLines, lineAt, readsWholeLine, type Line } from "./lines";
 import { adAction, isAdShowing } from "./ads";
@@ -246,7 +247,20 @@ async function start(): Promise<void> {
   if (mine !== generation || adShowing || words.length === 0) return;
 
   const usable = settings.removeFillers ? withoutFillers(words) : words;
-  const overlay = new ReaderOverlay(settings);
+  const overlay = new ReaderOverlay(
+    settings,
+    (root) =>
+      new ReaderControls(root, settings, {
+        romanizable: words.some(({ word }) =>
+          /[\p{Script=Devanagari}\p{Script=Bengali}]/u.test(word.text),
+        ),
+        onChange: (patch) => {
+          settings = { ...settings, ...patch };
+          session?.overlay.apply(settings);
+          session?.redraw();
+        },
+      }),
+  );
   overlay.mount(found.player);
   document.documentElement.classList.toggle(
     "trf-hide-native",
