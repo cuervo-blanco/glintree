@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReaderOverlay } from "./overlay";
+import { graphemes, splitAtReadingOrp } from "./graphemes";
 import { classify } from "../reader-core/words";
 import {
   DEFAULTS,
@@ -41,6 +42,45 @@ function mount(patch: Partial<Settings>): {
 
 const words = (root: HTMLElement): HTMLElement[] =>
   Array.from(root.querySelectorAll<HTMLElement>(".trf-lw"));
+
+describe("romanized display", () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(Object.keys(MODE_LABELS) as ReadingMode[])(
+    "switches script without changing the transcript in %s",
+    (mode) => {
+      const view = {
+        key: "line:0",
+        current: classify("আমি"),
+        previous: [classify("नीला")],
+        upcoming: [classify("YouTube")],
+      };
+      const { root, overlay } = mount({ mode });
+      const current = () =>
+        (
+          root.querySelector(".trf-lw--current") ??
+          root.querySelector(".trf-word")
+        )?.textContent;
+      overlay.render(view);
+      expect(current()).toBe("আমি");
+      overlay.apply({ ...DEFAULTS, mode, romanize: true });
+      overlay.render(view);
+      expect(current()).toBe("āmi");
+      if (mode !== "focusline") {
+        expect(root.textContent).toContain("nīlā");
+        expect(root.textContent).toContain("YouTube");
+      }
+      expect(view.current.text).toBe("আমি");
+      expect(view.previous[0].text).toBe("नीला");
+      overlay.apply({ ...DEFAULTS, mode, romanize: false });
+      overlay.render(view);
+      expect(current()).toBe("আমি");
+    },
+  );
+});
 
 describe("mode labels", () => {
   /*
@@ -185,13 +225,16 @@ describe("mode dispatch", () => {
   });
 });
 
-describe("Han alignment", () => {
+describe("shaped text alignment", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
     ["中文", 0],
     ["𠀀好", 0],
     ["𠀀好", 6],
+    ["किताब", 0],
+    ["বাংলা", 6],
+    ["ki\u0304", 0],
   ])(
     "uses rendered glyph widths for %s with %ipx tracking",
     (text, spacing) => {
@@ -211,6 +254,88 @@ describe("Han alignment", () => {
       expect(style.getPropertyValue("--trf-word-right")).toBe("9px");
     },
   );
+});
+
+describe("Indic reading units", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    ["नमस्ते", "म"],
+    ["हिन्दी", "न्दी"],
+    ["किताब", "ता"],
+    ["क्षेत्र", "त्र"],
+    ["दृष्टि", "ष्टि"],
+    ["फ़िल्म", "ल्म"],
+    ["क्‍षेत्र", "त्र"],
+    ["বাংলা", "লা"],
+    ["নমস্কার", "ম"],
+    ["প্রযুক্তি", "যু"],
+    ["কী", "কী"],
+    ["শিক্ষা", "ক্ষা"],
+    ["ক্ষুদ্র", "দ্র"],
+    ["ক্‍ষুদ্র", "দ্র"],
+    ["ড়াক্তার", "ক্তা"],
+    ["“किताब।”", "ता"],
+    ["কখগঘঙ।", "খ"],
+    ["ki\u0304", "i\u0304"],
+  ])("keeps %s whole at its recognition point", (text, pivot) => {
+    const parts = splitAtReadingOrp(text);
+    expect(parts.pivot).toBe(pivot);
+    expect(parts.before + parts.pivot + parts.after).toBe(text);
+  });
+
+  it("keeps conjuncts whole with older Unicode segmentation tables", () => {
+    vi.spyOn(Intl.Segmenter.prototype, "segment").mockReturnValue(
+      ["क्‍", "षे", "त्", "र"].map((segment) => ({
+        segment,
+      })) as unknown as Intl.Segments,
+    );
+    expect(graphemes("क्‍षेत्र")).toEqual(["क्‍षे", "त्र"]);
+  });
+});
+
+describe("native script modes", () => {
+  beforeEach(() => {
+    // jsdom has no layout. The real-browser probe checks the shaped geometry.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 0, 40, 30),
+    );
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(Object.keys(MODE_LABELS) as ReadingMode[])(
+    "preserves the native word in %s",
+    (mode) => {
+      const { root, overlay } = mount({ mode });
+      overlay.render({ ...VIEW, current: classify("বাংলা") });
+      expect(root.querySelector(".trf-word")?.textContent).toContain("বাংলা");
+      if (mode === "rsvp" || mode === "rsvp-bionic") {
+        expect(root.querySelector(".trf-pivot")?.textContent).toBe("লা");
+      }
+    },
+  );
+
+  it("bolds whole clusters in the line and the hybrid's context", () => {
+    const line = mount({ mode: "bionic" });
+    line.overlay.render({ ...VIEW, current: classify("नमस्ते") });
+    expect(line.root.querySelector(".trf-lw--current b")?.textContent).toBe(
+      "न",
+    );
+
+    const hybrid = mount({ mode: "rsvp-bionic" });
+    hybrid.overlay.render({
+      previous: [classify("क्षेत्र")],
+      current: classify("किताब"),
+      upcoming: [classify("বাংলা")],
+    });
+    expect(hybrid.root.querySelector(".trf-pivot")?.textContent).toBe("ता");
+    expect(
+      hybrid.root.querySelector(".trf-context--before b")?.textContent,
+    ).toBe("क्षे");
+    expect(
+      hybrid.root.querySelector(".trf-context--after b")?.textContent,
+    ).toBe("বাং");
+  });
 });
 
 describe("mounting", () => {
