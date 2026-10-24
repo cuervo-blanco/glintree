@@ -1,0 +1,128 @@
+.trf-reader .trf-controls {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  color: var(--text);
+  font:
+    400 13px/1.4 system-ui,
+    sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 60ms ease;
+}
+
+.html5-video-player:hover .trf-reader .trf-controls,
+.trf-reader .trf-controls:focus-within,
+.trf-reader .trf-controls[open] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.trf-reader .trf-controls > summary {
+  padding: 5px 9px;
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  background: var(--bg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.trf-reader .trf-controls > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trf-reader .trf-control-panel {
+  position: absolute;
+  right: var(--trf-panel-right, 0px);
+  bottom: calc(100% + 6px);
+  width: var(--trf-panel-width, 340px);
+  max-width: calc(100vw - 20px);
+  max-height: var(--trf-panel-height, 320px);
+  padding: 8px 12px;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  scrollbar-width: thin;
+  scrollbar-color: var(--faded) var(--bg);
+}
+
+.trf-reader .trf-controls[data-below="true"] .trf-control-panel {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+.trf-reader .trf-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+}
+
+.trf-reader .trf-control-row > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.trf-reader .trf-control-row output {
+  margin-left: 6px;
+  color: var(--faded);
+  font-variant-numeric: tabular-nums;
+}
+
+.trf-reader .trf-control-row input,
+.trf-reader .trf-control-row select {
+  width: 136px;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+  accent-color: var(--accent);
+  font: inherit;
+}
+
+.trf-reader .trf-control-row select {
+  padding: 4px;
+  border: 1px solid var(--faded);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.trf-reader .trf-control-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.trf-reader .trf-control-row input[type="color"] {
+  width: 40px;
+  height: 26px;
+  padding: 2px;
+  border: 1px solid var(--faded);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.trf-reader .trf-controls :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A caption gap must not take away a control the viewer is using. */
+.trf-reader.trf-idle:has(.trf-controls) {
+  opacity: 1;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.trf-reader.trf-idle:has(.trf-controls) .trf-stage {
+  opacity: 0;
+}
