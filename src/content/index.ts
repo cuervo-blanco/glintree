@@ -22,6 +22,7 @@ import {
 } from "./captions";
 import { ReaderOverlay } from "./overlay";
 import { ReaderControls } from "./controls";
+import { readingWpm } from "./speed";
 import { nativeCaptionSource, type CaptionSource } from "./captionSource";
 import { buildLines, lineAt, readsWholeLine, type Line } from "./lines";
 import { adAction, isAdShowing } from "./ads";
@@ -335,6 +336,10 @@ function track(
     overlay.setHidden(false);
     const timeMs = video.currentTime * 1000;
     const index = wordAt(words, timeMs);
+    overlay.setSpeed(
+      readingWpm(words, index, video.playbackRate),
+      video.paused,
+    );
     if (index < 0) {
       overlay.clear();
       return;
@@ -380,6 +385,11 @@ function track(
     cancelVideoFrameCallback?: (id: number) => void;
   };
   const withFrames = video as WithFrameCallback;
+  const events = ["seeked", "ratechange", "play", "pause", "ended"];
+  for (const event of events) video.addEventListener(event, update);
+  const unlisten = (): void => {
+    for (const event of events) video.removeEventListener(event, update);
+  };
 
   if (typeof withFrames.requestVideoFrameCallback === "function") {
     const step = (): void => {
@@ -391,13 +401,12 @@ function track(
     // A paused video presents no frames, so the callback stops firing and the
     // last word simply stays — which is the behaviour we want. Seeking while
     // paused still needs an explicit nudge.
-    video.addEventListener("seeked", update);
     return {
       redraw: update,
       stop: () => {
         stopped = true;
         withFrames.cancelVideoFrameCallback?.(handle);
-        video.removeEventListener("seeked", update);
+        unlisten();
       },
     };
   }
@@ -408,13 +417,12 @@ function track(
     handle = requestAnimationFrame(step);
   };
   handle = requestAnimationFrame(step);
-  video.addEventListener("seeked", update);
   return {
     redraw: update,
     stop: () => {
       stopped = true;
       cancelAnimationFrame(handle);
-      video.removeEventListener("seeked", update);
+      unlisten();
     },
   };
 }
