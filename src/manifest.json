@@ -2,26 +2,26 @@
   "manifest_version": 3,
   "name": "TextReadsFast for YouTube",
   "version": "0.1.0",
-  "description": "Read YouTube subtitles one word at a time, at a fixed focal point, so you can follow along at 2x.",
+  "description": "Learn languages and read faster with timed YouTube captions, romanization and a focus transcript.",
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-  "permissions": ["storage", "unlimitedStorage", "downloads"],
+  "permissions": ["storage"],
   "host_permissions": ["*://*.youtube.com/*"],
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/*"],
       "js": ["content.js"],
-      "css": ["reader.css", "readmode.css"],
+      "css": ["reader.css"],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["inject.js", "fonts/*", "keysetup.html"],
+      "resources": ["inject.js", "fonts/*"],
       "matches": ["*://www.youtube.com/*"]
     }
   ],
@@ -30,10 +30,8 @@
     "open_in_tab": true
   },
   "action": {
-    "default_title": "TextReadsFast",
-    "default_popup": "popup.html"
+    "default_title": "TextReadsFast settings"
   },
-  "optional_host_permissions": ["https://openrouter.ai/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
   }
