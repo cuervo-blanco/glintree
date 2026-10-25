@@ -394,15 +394,14 @@ describe("motion", () => {
 
 describe("the custom palette", () => {
   const PALETTE: Partial<Settings> = {
-    customBackground: "#101010",
     customText: "#fafafa",
     customFaded: "#808080",
     customAccent: "#00ff88",
   };
 
-  it("writes its four colours when the custom theme is on", () => {
+  it("writes custom inks while leaving the background to the stylesheet", () => {
     const { root } = mount({ theme: "custom", ...PALETTE });
-    expect(root.style.getPropertyValue("--trf-custom-bg")).toBe("#101010");
+    expect(root.style.getPropertyValue("--trf-custom-bg")).toBe("");
     expect(root.style.getPropertyValue("--trf-custom-text")).toBe("#fafafa");
     expect(root.style.getPropertyValue("--trf-custom-faded")).toBe("#808080");
     expect(root.style.getPropertyValue("--trf-custom-accent")).toBe("#00ff88");
