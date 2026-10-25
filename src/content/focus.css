@@ -1,0 +1,141 @@
+#movie_player {
+  --trf-transcript-width: min(360px, 45%);
+}
+
+.trf-reader ~ .trf-transcript {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 52px;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  width: var(--trf-transcript-width);
+  box-sizing: border-box;
+  color: #e8e6e3;
+  background: #111;
+  border-left: 1px solid #333;
+  font:
+    14px/1.6 system-ui,
+    sans-serif;
+  pointer-events: auto;
+}
+
+.trf-reader ~ .trf-transcript[hidden],
+.trf-reader-status .trf-focus-tools[hidden] {
+  display: none;
+}
+
+.trf-reader-status .trf-focus-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.trf-reader-status .trf-focus-notice {
+  max-width: 180px;
+}
+
+.trf-reader ~ .trf-transcript header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
+}
+
+.trf-reader ~ .trf-transcript header strong {
+  flex: 1;
+}
+
+.trf-reader ~ .trf-transcript button {
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.trf-reader ~ .trf-transcript header button {
+  border: 1px solid #555;
+  padding: 2px 5px;
+}
+
+.trf-reader ~ .trf-transcript header button[aria-pressed="false"] {
+  color: #999;
+}
+
+.trf-reader ~ .trf-transcript .trf-transcript-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #111;
+}
+
+.trf-reader ~ .trf-transcript .trf-transcript-line {
+  margin: 0 0 12px;
+}
+
+.trf-reader ~ .trf-transcript .trf-transcript-time {
+  padding: 0;
+  border: 0;
+  color: #999;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.trf-reader ~ .trf-transcript p {
+  margin: 2px 0 0;
+}
+
+.trf-reader ~ .trf-transcript .trf-transcript-word {
+  display: inline;
+  padding: 1px;
+  border: 0;
+}
+
+.trf-reader ~ .trf-transcript .trf-transcript-word:is(:hover, .trf-current) {
+  color: #f4f4f2;
+  background: #3c4148;
+}
+
+.trf-reader ~ .trf-transcript :focus-visible {
+  outline: 2px solid #d2694a;
+  outline-offset: 1px;
+}
+
+#movie_player.trf-transcript-open .trf-reader-status {
+  right: calc(var(--trf-transcript-width) + 12px);
+  max-width: calc(100% - var(--trf-transcript-width) - 24px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+#movie_player.trf-focus-fullscreen .trf-reader {
+  top: 50% !important;
+  left: 50% !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: 90%;
+  max-width: 90%;
+  background: transparent;
+}
+
+#movie_player.trf-focus-fullscreen.trf-transcript-open .trf-reader {
+  left: calc((100% - var(--trf-transcript-width)) / 2) !important;
+  width: calc((100% - var(--trf-transcript-width)) * 0.9);
+  max-width: calc((100% - var(--trf-transcript-width)) * 0.9);
+}
+
+#movie_player.trf-focus-fullscreen.ytp-autohide
+  .trf-reader-status:not(:has(:focus-visible)),
+#movie_player.trf-focus-fullscreen.ytp-autohide
+  .trf-reader:not(.trf-editing):not(:has(:focus-visible))
+  [class*="trf-resize-"] {
+  opacity: 0;
+  pointer-events: none;
+}
