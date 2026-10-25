@@ -117,17 +117,19 @@ describe("applying a profile", () => {
     }
   });
 
-  it("leaves the user's language and script preferences alone", async () => {
+  it("leaves the user's language, script and focus preferences alone", async () => {
     await chrome.storage.sync.set({
       enabled: false,
       language: "hi",
       romanize: true,
+      focusMode: true,
     });
     await applyProfile(byId("obsidian"));
     const settings = await loadSettings();
     expect(settings.enabled).toBe(false);
     expect(settings.language).toBe("hi");
     expect(settings.romanize).toBe(true);
+    expect(settings.focusMode).toBe(true);
   });
 
   it("records the profile as active", async () => {
@@ -158,12 +160,27 @@ describe("modification tracking", () => {
         enabled: false,
         language: "bn",
         romanize: true,
+        focusMode: true,
       }),
     ).toBe(false);
   });
 });
 
 describe("custom profiles", () => {
+  it("centres older profiles that predate direct positioning", async () => {
+    const { horizontalPosition: _position, ...older } =
+      byId("obsidian").settings;
+    await chrome.storage.sync.set({
+      customProfiles: { older: { name: "Older", settings: older } },
+    });
+    const profile = (await loadProfiles()).all.find((p) => p.id === "older")!;
+    expect(profile.settings.horizontalPosition).toBe(50);
+    await applyProfile(profile);
+    const settings = await loadSettings();
+    expect(settings.horizontalPosition).toBe(50);
+    expect(isModified(profile, settings)).toBe(false);
+  });
+
   it("round-trips save, load and update", async () => {
     await applyProfile(byId("default"));
     const settings = await loadSettings();
@@ -194,6 +211,7 @@ describe("custom profiles", () => {
       enabled: false,
       language: "bn",
       romanize: true,
+      focusMode: true,
     });
     const stored = (await loadProfiles()).all.find((p) => p.id === saved.id);
     expect(Object.keys(stored!.settings).sort()).toEqual(
