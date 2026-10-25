@@ -26,22 +26,13 @@ import { readingWpm } from "./speed";
 import { nativeCaptionSource, type CaptionSource } from "./captionSource";
 import { buildLines, lineAt, readsWholeLine, type Line } from "./lines";
 import { adAction, isAdShowing } from "./ads";
-import {
-  forgetWatchData,
-  isReadModeOpen,
-  closeReadMode,
-  rememberWatchData,
-  toggleReadMode,
-} from "./readmodeBridge";
+import { FocusView } from "./focus";
+import { PlayerToggle } from "./playerToggle";
 import {
   DEFAULTS,
-  DEVICE_DEFAULTS,
-  loadDevicePrefs,
   loadSettings,
-  onDevicePrefsChanged,
   onSettingsChanged,
   saveSettings,
-  type DevicePrefs,
   type Settings,
 } from "../settings";
 
@@ -50,6 +41,7 @@ const CHANNEL = "trf-youtube";
 interface Session {
   words: TimedWord[];
   overlay: ReaderOverlay;
+  focus: FocusView;
   video: HTMLVideoElement;
   stop: () => void;
   /** Force one redraw. A paused video presents no frames, so a settings change
@@ -69,16 +61,7 @@ let currentVideoId: string | null = null;
 let adShowing = false;
 let adWatcher: { player: HTMLElement; observer: MutationObserver } | null =
   null;
-/**
- * Read Mode is showing and the viewer asked for no word stream there.
- *
- * A second, independent reason to hide the reader alongside "an ad is playing".
- * They have to compose: `update` runs every frame and would otherwise unhide on
- * the next one, which is exactly what a naive `setHidden(true)` here did.
- */
-let readerSuppressed = false;
-/** Device-local preferences: stats tracking and auto-entry. See `settings.ts`. */
-let prefs: DevicePrefs = DEVICE_DEFAULTS;
+let playerToggle: PlayerToggle | null = null;
 
 /* ── page bridge ────────────────────────────────────────────────────────── */
 
@@ -112,17 +95,6 @@ window.addEventListener("message", (event: MessageEvent) => {
       tracks = mine;
       void start();
     }
-  } else if (data.kind === "watchdata") {
-    // Chapters and video metadata for Read Mode. Not filtered by video id the
-    // way captions are: this payload identifies its own video internally, and
-    // the extractors ignore anything whose shape they do not recognise.
-    rememberWatchData(
-      data.payload as {
-        watchData?: unknown;
-        playerResponse?: unknown;
-        videoId?: string | null;
-      },
-    );
   } else if (data.kind === "timedtext") {
     const { url, body } = data.payload as { url?: string; body: string };
     if (body && belongsToCurrentVideo(url)) {
@@ -213,31 +185,11 @@ function findPlayer(): { player: HTMLElement; video: HTMLVideoElement } | null {
   return player && video ? { player, video } : null;
 }
 
-/**
- * Which attempt at building a session currently owns the reader.
- *
- * THE BUG THIS EXISTS FOR: switching profile mid-video left two readers stacked
- * on the player, one drawing the old profile's card underneath the new one, and
- * nothing could take the old one down again.
- *
- * `start()` guards on `session` and then awaits the transcript, which takes
- * hundreds of milliseconds. `session` is still null for all of that time, so a
- * second `start()` walked straight past the guard and both calls mounted an
- * overlay. Only the last was stored, so `teardown()` had no reference left to
- * destroy the first -- it stayed in the DOM with its own frame loop running.
- *
- * A profile switch is exactly what triggers it, because a profile that differs
- * in `removeFillers` tears down and restarts, and `teardown()` is a no-op while
- * the previous start is still in flight.
- *
- * Every start claims a number, and every start and teardown invalidates the
- * ones before it. A start that was overtaken while awaiting stands down instead
- * of mounting.
- */
+/** An overtaken caption fetch must not mount a second reader. */
 let generation = 0;
 
 async function start(): Promise<void> {
-  if (!settings.enabled || session) return;
+  if (!currentVideoId || !settings.enabled || session) return;
   const mine = ++generation;
   const words = await collectWords();
   // Navigation can replace the player while captions load. Use the current one,
@@ -248,21 +200,28 @@ async function start(): Promise<void> {
   if (mine !== generation || adShowing || words.length === 0) return;
 
   const usable = settings.removeFillers ? withoutFillers(words) : words;
+  let controls: ReaderControls;
   const overlay = new ReaderOverlay(
     settings,
     (root) =>
-      new ReaderControls(root, settings, {
+      (controls = new ReaderControls(root, settings, {
         romanizable: words.some(({ word }) =>
           /[\p{Script=Devanagari}\p{Script=Bengali}]/u.test(word.text),
         ),
         onChange: (patch) => {
-          settings = { ...settings, ...patch };
-          session?.overlay.apply(settings);
-          session?.redraw();
+          applySettings({ ...settings, ...patch });
         },
-      }),
+      })),
   );
   overlay.mount(found.player);
+  const focus = new FocusView(found.player, found.video, words, {
+    onFocus: (focusMode) => {
+      applySettings({ ...settings, focusMode });
+      void saveSettings({ focusMode });
+    },
+  });
+  controls!.attachFocus(focus.controls);
+  focus.apply(settings);
   document.documentElement.classList.toggle(
     "trf-hide-native",
     settings.hideNativeCaptions,
@@ -271,13 +230,11 @@ async function start(): Promise<void> {
   session = {
     words: usable,
     overlay,
+    focus,
     video: found.video,
-    ...track(found.video, usable, overlay),
+    ...track(found.video, usable, overlay, focus),
   };
   session.redraw();
-
-  // Only now: before this, there was no transcript to open Read Mode with.
-  maybeAutoEnter();
 }
 
 /**
@@ -292,6 +249,7 @@ function track(
   video: HTMLVideoElement,
   words: TimedWord[],
   overlay: ReaderOverlay,
+  focus: FocusView,
 ): { stop: () => void; redraw: () => void } {
   let stopped = false;
   let handle = 0;
@@ -328,13 +286,16 @@ function track(
     // The player is read directly here rather than through the cached flag. A
     // session can be built in the instant before the ad class lands, and the
     // flag would then let a frame of the real transcript render over the ad.
-    if (adOnScreen() || readerSuppressed) {
+    if (adOnScreen()) {
       overlay.setHidden(true);
+      focus.setHidden(true);
       overlay.clear();
       return;
     }
     overlay.setHidden(false);
+    focus.setHidden(false);
     const timeMs = video.currentTime * 1000;
+    focus.update(timeMs);
     const index = wordAt(words, timeMs);
     overlay.setSpeed(
       readingWpm(words, index, video.playbackRate),
@@ -432,6 +393,7 @@ function teardown(): void {
   // this has to handle: with no session yet, there is nothing else to stop.
   generation += 1;
   session?.stop();
+  session?.focus.destroy();
   session?.overlay.destroy();
   session = null;
   document.documentElement.classList.remove("trf-hide-native");
@@ -484,6 +446,7 @@ function onAdStateChange(player: HTMLElement): void {
       // Done here as well as in `update`, because a paused ad presents no frames
       // and `update` would not run to notice.
       session?.overlay.setHidden(true);
+      session?.focus.setHidden(true);
       session?.overlay.clear();
       break;
     case "resume":
@@ -516,16 +479,11 @@ function onNavigate(): void {
   const id = videoIdOf();
   if (id === currentVideoId) return;
   currentVideoId = id;
-  autoEnteredFor = null;
   teardown();
   tracks = [];
   pendingBodies = [];
-  forgetWatchData();
-
-  // Read Mode needs its own handling here. Leaving /watch has to close it, and
-  // a new video has to rebuild it — neither of which the reader session's own
-  // teardown covers, since Read Mode owns the player and the page cover.
-  if (isReadModeOpen()) void closeReadMode();
+  playerToggle?.destroy();
+  playerToggle = null;
   if (id) {
     // The player can lag navigation; ask again with the bridge's retries.
     requestRescan();
@@ -548,6 +506,7 @@ function awaitPlayer(): void {
   const tick = (): void => {
     const found = findPlayer();
     if (found) {
+      mountToggle(found.player);
       watchAds(found.player);
       void start();
       return;
@@ -557,155 +516,53 @@ function awaitPlayer(): void {
   tick();
 }
 
-/* ── read mode ──────────────────────────────────────────────────────────── */
-
-/**
- * The prompt is user-editable and is not a secret, so the content script may
- * read it. An empty string means "use the shipped default", which the service
- * worker substitutes — that keeps the default in one place rather than two.
- */
-async function summaryPrompt(): Promise<string> {
-  try {
-    const stored = await chrome.storage.local.get({
-      "readmode.summaryPrompt": "",
+function mountToggle(player: HTMLElement): void {
+  if (playerToggle?.player !== player) {
+    playerToggle?.destroy();
+    playerToggle = new PlayerToggle(player, () => {
+      const enabled = !settings.enabled;
+      applySettings({ ...settings, enabled });
+      void saveSettings({ enabled });
     });
-    return String(stored["readmode.summaryPrompt"] ?? "");
-  } catch {
-    return "";
   }
+  playerToggle.apply(settings.enabled);
 }
 
-async function enterOrLeaveReadMode(): Promise<{
-  ok: boolean;
-  reason?: string;
-}> {
-  const reader = session
-    ? { words: session.words, video: session.video, redraw: session.redraw }
-    : null;
-  const result = await toggleReadMode(
-    reader,
-    await summaryPrompt(),
-    {
-      on: settings.readerInReadMode,
-      onChange: (on) => {
-        // One source of truth: the button writes the same setting the options
-        // page does, so the two can never disagree about whether the reader runs.
-        readerSuppressed = on ? false : isReadModeOpen();
-        session?.redraw();
-        void saveSettings({ readerInReadMode: on });
-      },
-    },
-    prefs.statsTracking,
-    prefs.exportTranscript,
-    prefs.exportFolder,
-    prefs.exportAskWhere,
+function applySettings(next: Settings): void {
+  const previous = settings;
+  settings = next;
+  playerToggle?.apply(next.enabled);
+  if (!next.enabled) {
+    teardown();
+    return;
+  }
+  if (
+    !previous.enabled ||
+    previous.removeFillers !== next.removeFillers ||
+    previous.language !== next.language
+  ) {
+    teardown();
+    void start();
+    return;
+  }
+  session?.overlay.apply(next);
+  session?.focus.apply(next);
+  session?.redraw();
+  document.documentElement.classList.toggle(
+    "trf-hide-native",
+    !!session && next.hideNativeCaptions,
   );
-
-  // The reader travels with the player into read mode for free, because
-  // `.trf-reader` is mounted inside `#movie_player`. Honouring the setting is
-  // therefore about hiding it, not about moving it.
-  if (result.ok && session) {
-    readerSuppressed = isReadModeOpen() && !settings.readerInReadMode;
-    session.redraw();
-  }
-  return result;
-}
-
-/**
- * Enter Read Mode by itself, if that is what the viewer asked for.
- *
- * Only once per video and only when a session with captions exists, since Read
- * Mode without a transcript has nothing to show. Never fights a manual exit:
- * `autoEnteredFor` remembers the video, so closing it stays closed.
- */
-let autoEnteredFor: string | null = null;
-
-function maybeAutoEnter(): void {
-  if (!prefs.autoReadMode) return;
-  if (isReadModeOpen() || !session) return;
-  const id = videoIdOf();
-  if (!id || autoEnteredFor === id) return;
-  autoEnteredFor = id;
-  void enterOrLeaveReadMode();
 }
 
 async function init(): Promise<void> {
   settings = await loadSettings();
-  prefs = await loadDevicePrefs();
-
-  onDevicePrefsChanged((next) => {
-    prefs = next;
-    maybeAutoEnter();
-  });
-
-  // The popup is an extension page and cannot reach the player, so it asks.
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if ((message as { type?: string })?.type !== "readmode.toggle")
-      return false;
-    void enterOrLeaveReadMode().then(sendResponse);
-    return true; // async reply; returning falsy closes the channel
-  });
-
-  // Shift+R rather than a bare letter: YouTube already owns most single keys,
-  // and a modifier keeps this from firing while someone types in a comment.
-  document.addEventListener("keydown", (event) => {
-    if (!event.shiftKey || event.ctrlKey || event.altKey || event.metaKey)
-      return;
-    if (event.key !== "R" && event.key !== "r") return;
-    const target = event.target;
-    if (
-      target instanceof HTMLElement &&
-      (target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable)
-    ) {
-      return;
-    }
-    event.preventDefault();
-    void enterOrLeaveReadMode();
-  });
-
-  onSettingsChanged((next) => {
-    const previous = settings;
-    settings = next;
-
-    if (!next.enabled) {
-      teardown();
-      return;
-    }
-    if (!previous.enabled) {
-      void start();
-      return;
-    }
-
-    // Toggling it while read mode is open should take effect immediately.
-    readerSuppressed = isReadModeOpen() && !next.readerInReadMode;
-
-    // The language and filler filter decide the transcript, not its appearance.
-    if (
-      previous.removeFillers !== next.removeFillers ||
-      previous.language !== next.language
-    ) {
-      teardown();
-      void start();
-      return;
-    }
-
-    session?.overlay.apply(next);
-    // A profile switch changes several things at once, the reading mode among
-    // them. Without this the change waits for the next presented frame, and a
-    // paused video never presents one.
-    session?.redraw();
-    document.documentElement.classList.toggle(
-      "trf-hide-native",
-      next.hideNativeCaptions,
-    );
-  });
-
+  onSettingsChanged(applySettings);
   document.addEventListener("yt-navigate-finish", onNavigate);
   window.addEventListener("popstate", onNavigate);
-  window.addEventListener("pagehide", teardown);
-
+  window.addEventListener("pagehide", () => {
+    teardown();
+    playerToggle?.destroy();
+  });
   injectPageScript();
   currentVideoId = videoIdOf();
   awaitPlayer();
