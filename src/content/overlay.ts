@@ -78,7 +78,7 @@ export class ReaderOverlay {
 
     this.root = document.createElement("div");
     this.root.className = "trf-reader";
-    // The player owns the pointer. Reading must never cost a click.
+    // Only caption editing opts into pointer events; the rest stays transparent.
     this.root.style.pointerEvents = "none";
 
     this.stage = document.createElement("div");
@@ -127,6 +127,7 @@ export class ReaderOverlay {
     }
 
     player.appendChild(this.root);
+    this.controls?.mount(player);
 
     // Watching the player covers fullscreen, theatre mode and plain window
     // resizing with one mechanism, rather than listening for a fullscreen event
@@ -200,6 +201,10 @@ export class ReaderOverlay {
       "--trf-bottom",
       `${settings.verticalPosition}%`,
     );
+    this.root.style.setProperty(
+      "--trf-left",
+      `${settings.horizontalPosition}%`,
+    );
     this.root.style.setProperty("--trf-width", `${settings.boxWidth}%`);
     // A percentage, because `color-mix` wants one. Clamped here rather than
     // trusting storage, which can hold anything a previous version wrote.
@@ -249,7 +254,12 @@ export class ReaderOverlay {
   setHidden(hidden: boolean): void {
     if (this.root.classList.contains("trf-hidden") === hidden) return;
     this.root.classList.toggle("trf-hidden", hidden);
+    this.controls?.setHidden(hidden);
     if (!hidden) this.controls?.layout();
+  }
+
+  setSpeed(wpm: number | null, paused: boolean): void {
+    this.controls?.setSpeed(wpm, paused);
   }
 
   /** Nothing is playing, or no word covers this moment. */
@@ -260,6 +270,7 @@ export class ReaderOverlay {
     if (this.root.classList.contains("trf-idle")) return;
     this.lastKey = null;
     this.root.classList.add("trf-idle");
+    this.controls?.setIdle(true);
     this.wordEl.textContent = "";
     this.beforeEl.textContent = "";
     this.afterEl.textContent = "";
@@ -276,7 +287,8 @@ export class ReaderOverlay {
     if (key === this.lastKey) return;
     this.lastKey = key;
     this.root.classList.remove("trf-idle");
-    this.root.classList.remove("trf-hidden");
+    this.setHidden(false);
+    this.controls?.setIdle(false);
 
     if (this.settings.romanize) {
       const display = (word: Word): Word => ({
