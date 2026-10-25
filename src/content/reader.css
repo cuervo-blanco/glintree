@@ -45,15 +45,16 @@
   );
 
   position: absolute;
+  --trf-window-width: min(var(--trf-width, 62%), 94%, calc(100% - 48px));
   left: clamp(
-    calc(var(--trf-width, 62%) / 2),
+    calc(var(--trf-window-width) / 2 + 24px),
     var(--trf-left, 50%),
-    calc(100% - var(--trf-width, 62%) / 2)
+    calc(100% - var(--trf-window-width) / 2 - 24px)
   );
   bottom: var(--trf-bottom, 8%);
   transform: translateX(-50%);
   z-index: 60; /* above the video, below YouTube's own controls and menus */
-  width: var(--trf-width, 62%);
+  width: var(--trf-window-width);
   max-width: 94%;
   padding: 8px 12px;
   box-sizing: border-box;
