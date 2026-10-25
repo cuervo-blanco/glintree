@@ -11,7 +11,6 @@
 
 import { ReaderOverlay } from "../content/overlay";
 import { buildLines, readsWholeLine } from "../content/lines";
-import { BUILT_IN_PROFILES } from "../profiles";
 import { classify } from "../reader-core/words";
 import {
   DEFAULTS,
@@ -38,20 +37,7 @@ const AT = 5;
 /** The same words, chunked the way the static mode actually reads them. */
 const LINES = buildLines(WORDS);
 
-/**
- * A built-in profile's settings, by id.
- *
- * The harness screenshots the profiles people will actually pick, rather than a
- * separate set of values that can drift from them. If a profile is retuned, the
- * picture of it changes with it.
- */
-function BUILT_IN(id: string): Partial<Settings> {
-  const found = BUILT_IN_PROFILES.find((p) => p.id === id);
-  if (!found) throw new Error(`no built-in profile "${id}"`);
-  return found.settings;
-}
-
-/** The line a static profile shows, at its own line length. */
+/** The line a held caption shows, at its own line length. */
 function staticView(maxWords: number) {
   const lines = buildLines(WORDS, maxWords);
   return {
@@ -112,37 +98,28 @@ function panel(caption: string, settings: Partial<Settings>): HTMLElement {
   return cell;
 }
 
-/**
- * The Custom theme, twice.
- *
- * Its five properties are assembled half in the stylesheet and half from
- * settings, which is the one palette that can be wrong in a way no unit test
- * sees: the test asserts that four custom properties are written, not that the
- * `[data-theme="custom"]` block picks them up. Two palettes, because a light
- * one and a dark one exercise the derived `--edge` in both directions.
- */
+/** Held lines and custom inks exercise rules that need a real browser. */
 const CUSTOM_PANELS: Array<[string, Partial<Settings>]> = [
   [
-    "Serif Flow — bionic, sliding",
-    { ...BUILT_IN("serif-flow"), autoScale: false, fontSize: 22 },
+    "Bionic — held still",
+    { mode: "bionic", motion: "static", font: "literata", fontSize: 22 },
   ],
   [
-    "Serif Static — bionic, held still",
-    { ...BUILT_IN("serif-static"), autoScale: false, fontSize: 22 },
+    "Plain — held still",
+    { mode: "plain", motion: "static", font: "literata", fontSize: 22 },
   ],
   [
-    "Lyric — gold italic on a blue band",
-    { ...BUILT_IN("lyric"), autoScale: false, fontSize: 18 },
+    "Lyric — gold ink",
+    { theme: "lyric", mode: "plain", fontStyle: "italic", fontSize: 22 },
   ],
   [
-    "Black Box — white on solid black",
-    { ...BUILT_IN("black-box"), autoScale: false, fontSize: 22 },
+    "Caption — neutral ink",
+    { theme: "caption", mode: "plain", backgroundOpacity: 1 },
   ],
   [
     "Custom — cool dark, low opacity",
     {
       theme: "custom",
-      customBackground: "#0f1b1a",
       customText: "#d7f0ea",
       customFaded: "#5c7a75",
       customAccent: "#3ddc97",
@@ -151,12 +128,11 @@ const CUSTOM_PANELS: Array<[string, Partial<Settings>]> = [
     },
   ],
   [
-    "Custom — warm light, opaque",
+    "Custom — warm ink, opaque",
     {
       theme: "custom",
       mode: "highlight",
-      customBackground: "#f6efe4",
-      customText: "#2a241c",
+      customText: "#f6efe4",
       customFaded: "#9c8f7c",
       customAccent: "#8c3f1d",
       backgroundOpacity: 0.95,
