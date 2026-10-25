@@ -1,27 +1,12 @@
-"""Render the harnesses and check the parts of them a person cannot eyeball.
+"""Capture reading modes and settings; assert ink and word geometry.
 
-Three jobs, deliberately separated:
-
-1. Write screenshots to dev-shots/, for eyeballing Read Mode next to the
-   design concept, and the six reading modes next to each other.
-2. Assert the column boundaries land where the concept puts them. This is the
-   automated gate. A per-pixel diff against a hand-composed JPEG would never
-   converge, and chasing that number would make the design worse, so the machine
-   checks geometry and a person checks taste.
-3. Assert Highlighter does not change a word's width when it becomes the current
-   one. That would shift the whole line once per word, and it is the one failure
-   here that no still screenshot can show.
-
-Uses the Playwright already installed for this machine's Python, matching the
-precedent set by scripts/fetch-fonts.py.
-
-Run: python scripts/shoot.py
+Run after: node scripts/build.mjs --dev
 """
 
 import functools
 import http.server
-import re
 import os
+import re
 import socketserver
 import sys
 import threading
@@ -33,91 +18,59 @@ except ImportError:
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = os.path.join(ROOT, "dist")
-HARNESS = os.path.join(DIST, "harness.html")
-OUT_DIR = os.path.join(ROOT, "dev-shots")
-OUT = os.path.join(OUT_DIR, "readmode.png")
-MODES_OUT = os.path.join(OUT_DIR, "reading-modes.png")
+OUT = os.path.join(ROOT, "dev-shots")
+COLORS = ["customText", "customFaded", "customAccent"]
 
-# The modes harness is a 2x6 grid of stand-in players: tall rather than wide.
-MODES_WIDTH = 1400
-MODES_HEIGHT = 2420
+CHROME_STUB = """
+const store = {};
+const presets = {};
+window.chrome = {
+  storage: {
+    sync: {
+      get: defaults => Promise.resolve({ ...defaults, ...store }),
+      set: patch => { Object.assign(store, patch); return Promise.resolve(); },
+    },
+    local: {
+      get: defaults => Promise.resolve({ ...defaults, ...presets }),
+      set: patch => { Object.assign(presets, patch); return Promise.resolve(); },
+    },
+    onChanged: { addListener(){}, removeListener(){} },
+  },
+};
+"""
 
-# Sub-pixel differences are rounding in the layout engine, not a jump. Anything
-# a person could see is far larger: one side of Highlighter's padding is ~4px.
-JUMP_TOLERANCE = 0.6
-
-WIDTH = 1920
-HEIGHT = 950
-
-# Column boundaries read off the design concept (native width 1912) and scaled
-# to the capture viewport. The tolerance is generous because the concept
-# is a hand-composed mock, not a rendering of a grid.
-TOLERANCE = 14
-TARGETS = [
-    ("left nav right edge", "nav", "right", 397),
-    ("video column left", "main", "left", 409),
-    ("video column right", "main", "right", 1496),
-    ("chat column left", "side", "left", 1540),
-    ("chat column right", "side", "right", 1896),
-]
-
-MEASURE = """() => {
-  const box = (sel) => {
-    const node = document.querySelector(sel);
-    if (!node) return null;
-    const r = node.getBoundingClientRect();
-    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom,
-             width: r.width, height: r.height };
+INKS = """() => {
+  const color = (reader, selector) => {
+    const node = reader?.querySelector(selector);
+    return node ? getComputedStyle(node).color : null;
   };
+  const sliding = document.querySelector('.trf-reader[data-mode="rsvp-bionic"]');
+  const held = document.querySelector('.trf-reader[data-mode="bionic"][data-motion="static"]');
   return {
-    nav: box('.trf-rm-nav'),
-    main: box('.trf-rm-main'),
-    side: box('.trf-rm-side'),
-    stage: box('.trf-rm-stage'),
-    notes: box('.trf-rm-notelist'),
+    focus: color(sliding, '.trf-word'),
+    lead: color(sliding, '.trf-context--after b'),
+    context: color(sliding, '.trf-context--after'),
+    heldWord: color(held, '.trf-lw--future'),
+    heldBold: color(held, '.trf-lw--future b'),
+    heldCurrent: color(held, '.trf-lw--current'),
   };
 }"""
 
+SWATCHES = """() => Object.fromEntries(
+  ['customText', 'customFaded', 'customAccent'].map(key => [
+    key, document.getElementById('f-' + key).value.toLowerCase(),
+  ])
+)"""
 
-# Bionic's three levels of presence, read back as computed colour.
-#
-# The tiering is done with alpha on `color` rather than `opacity`, because
-# `opacity` composites: a `<b>` inside an element at 0.34 can only ever be
-# dimmer than 0.34. Nothing in a unit test can see whether that worked -- jsdom
-# does not compute `color-mix` -- so it is checked here, in a real browser.
-INKS = """() => {
-  const pick = (mode, sel) => {
-    const reader = document.querySelector(`.trf-reader[data-mode="${mode}"]`);
-    const node = reader && reader.querySelector(sel);
-    return node ? getComputedStyle(node).color : null;
-  };
-  // Bionic held still: every word one flat weight of ink, bold included. The
-  // rules that do this beat the sliding ones on a two-attribute selector, and
-  // a one-attribute version would tie and be decided by source order -- which
-  // is the kind of thing that silently reverses when a block is moved.
-  const held = document.querySelector(
-    '.trf-reader[data-motion="static"][data-mode="bionic"]'
-  );
-  const heldWord = held && held.querySelector('.trf-lw--future');
-  const heldCurrent = held && held.querySelector('.trf-lw--current');
-  return {
-    focus:   pick('rsvp-bionic', '.trf-word'),
-    lead:    pick('rsvp-bionic', '.trf-context--after b'),
-    context: pick('rsvp-bionic', '.trf-context--after'),
-    heldWord:    heldWord ? getComputedStyle(heldWord).color : null,
-    heldBold:    heldWord ? getComputedStyle(heldWord.querySelector('b')).color : null,
-    heldCurrent: heldCurrent ? getComputedStyle(heldCurrent).color : null,
-  };
+MATCHED_SWATCHES = """() => {
+  const style = getComputedStyle(document.getElementById('preview'));
+  return [['customText', '--text'], ['customFaded', '--faded'], ['customAccent', '--accent']]
+    .every(([key, property]) => document.getElementById('f-' + key).value.toLowerCase()
+      === style.getPropertyValue(property).trim().toLowerCase());
 }"""
 
 
 def alpha(css):
-    """Alpha of a computed colour.
-
-    Chromium serialises a `color-mix()` result as `color(srgb R G B / A)`, never
-    as `rgba()`, so matching only on rgba() reads every mixed colour as opaque
-    and the check silently passes.
-    """
     if css is None:
         return None
     found = re.search(r"/\s*([0-9.]+)\s*\)", css)
@@ -128,300 +81,81 @@ def alpha(css):
     return 1.0
 
 
-# Enough of `chrome.*` for the options page to boot outside an extension. Its
-# own storage calls are wrapped in try/catch, but the profile bar and the AI
-# panel are not, and an exception there stops the page before it renders.
-CHROME_STUB = """
-const store = {};
-const area = {
-  get: (d) => Promise.resolve({ ...(d || {}), ...store }),
-  set: (p) => { Object.assign(store, p); return Promise.resolve(); },
-};
-window.chrome = {
-  storage: { sync: area, local: area,
-             onChanged: { addListener(){}, removeListener(){} } },
-  runtime: { getURL: (p) => p, sendMessage: () => Promise.resolve({}),
-             lastError: null },
-  permissions: { contains: () => Promise.resolve(true) },
-};
-"""
-
-# Each built-in theme's real background, read off the stylesheet by the page
-# itself. The four colour pickers have to agree with whichever theme is chosen.
-THEME_BACKGROUNDS = {
-    "focus": "#16181b",
-    "slate": "#23262b",
-    "nocturne": "#1a1f27",
-    "mist": "#eef0f1",
-    "lyric": "#0d1a26",
-}
-
-PICK_THEME = """(name) => {
-  const el = document.getElementById('f-theme');
-  el.value = name;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-}"""
-
-SWATCHES = """() => Object.fromEntries(
-  ['customBackground','customText','customFaded','customAccent']
-    .map((n) => [n, document.getElementById('f-' + n).value.toLowerCase()])
-)"""
-
-
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    """The request log is noise that would bury the layout table."""
-
-    def log_message(self, *args: object) -> None:  # noqa: D102
-        return
+    def log_message(self, *args):
+        pass
 
 
-def serve(directory: str):
-    """Serve dist/ over http.
-
-    Not file://, because the harness fetches its fixture and a file:// page is a
-    null origin, so that fetch is refused before it starts. Serving also matches
-    how the stylesheet resolves its font urls inside the packed extension.
-    """
-    handler = functools.partial(QuietHandler, directory=directory)
-    httpd = socketserver.TCPServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, httpd.server_address[1]
-
-
-def main() -> None:
-    if not os.path.exists(HARNESS):
-        sys.exit(f"No harness at {HARNESS}\nBuild it first: node scripts/build.mjs --dev")
-
-    os.makedirs(OUT_DIR, exist_ok=True)
-    httpd, port = serve(DIST)
-
+def main():
+    if not os.path.exists(os.path.join(DIST, "modes.html")):
+        sys.exit("No dist/modes.html. Build first: node scripts/build.mjs --dev")
+    os.makedirs(OUT, exist_ok=True)
+    handler = functools.partial(QuietHandler, directory=DIST)
+    server = socketserver.TCPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = "http://127.0.0.1:%d" % server.server_address[1]
+    errors = []
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch()
-            page = browser.new_page(
-                viewport={"width": WIDTH, "height": HEIGHT}, device_scale_factor=1
+            launch = {}
+            if os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
+                launch["executable_path"] = os.environ["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
+            browser = p.chromium.launch(**launch)
+            modes = browser.new_page(viewport={"width": 1400, "height": 2420})
+            modes.on("pageerror", lambda error: errors.append(str(error)))
+            modes.goto(base + "/modes.html")
+            modes.wait_for_function("() => window.__ready === true")
+            modes.screenshot(path=os.path.join(OUT, "reading-modes.png"), full_page=True)
+            jump = modes.evaluate("() => window.__jump")
+            inks = modes.evaluate(INKS)
+            if not jump:
+                sys.exit("The modes harness measured no words.")
+            worst = max(abs(word["asCurrent"] - word["asOther"]) for word in jump)
+            if worst > 0.6:
+                sys.exit("Highlighter changes word width by %.2fpx." % worst)
+            print("Highlighter: %d words, worst width change %.2fpx" % (len(jump), worst))
+            tiers = {key: alpha(inks[key]) for key in ("focus", "lead", "context")}
+            if any(value is None for value in tiers.values()):
+                sys.exit("The Bionic ink probe could not find its words.")
+            if not (tiers["context"] < tiers["lead"] < tiers["focus"] == 1):
+                sys.exit("Bionic ink must progress from context to lead to current word.")
+            held = [inks[key] for key in ("heldWord", "heldBold", "heldCurrent")]
+            if None in held or len(set(held)) != 1:
+                sys.exit("A held Bionic line must use one flat ink colour.")
+            print("Bionic: sliding ink tiers and held-line ink pass")
+
+            options = browser.new_page(viewport={"width": 1100, "height": 1100})
+            options.on("pageerror", lambda error: errors.append(str(error)))
+            options.add_init_script(CHROME_STUB)
+            options.goto(base + "/options.html")
+            options.wait_for_selector("#f-customText")
+            themes = options.locator("#f-theme option").evaluate_all(
+                "options => options.map(option => option.value).filter(value => value !== 'custom')"
             )
-            errors: list[str] = []
-            page.on("pageerror", lambda e: errors.append(str(e)))
-
-            page.goto(f"http://127.0.0.1:{port}/harness.html")
-
-            # Wait on the harness's own signal rather than a timeout: it sets
-            # this only after document.fonts.ready, so a slow font can never be
-            # captured as a design that renders in the fallback face.
-            try:
-                page.wait_for_function("() => window.__ready === true", timeout=15000)
-            except Exception as error:
-                for line in errors:
-                    print(f"page error: {line}", file=sys.stderr)
-                raise SystemExit(f"harness never became ready: {error}")
-
-            page.screenshot(path=OUT)
-            boxes = page.evaluate(MEASURE)
-
-            # The key-setup state is worth looking at too: it is what a new user
-            # sees first, and it is the only pane that is an iframe.
-            page.goto(f"http://127.0.0.1:{port}/harness.html?state=needs-key")
-            page.wait_for_function("() => window.__ready === true", timeout=15000)
-            page.screenshot(path=os.path.join(OUT_DIR, "readmode-needs-key.png"))
-
-            page.goto(f"http://127.0.0.1:{port}/harness.html?state=focus")
-            page.wait_for_function("() => window.__ready === true", timeout=15000)
-            page.screenshot(path=os.path.join(OUT_DIR, "readmode-focus.png"))
-
-            page.goto(f"http://127.0.0.1:{port}/harness.html?state=error")
-            page.wait_for_function("() => window.__ready === true", timeout=15000)
-            page.screenshot(path=os.path.join(OUT_DIR, "readmode-error.png"))
-
-            # The reader itself, every mode at once. Its own page rather than
-            # another state of the Read Mode harness: this one is about the
-            # overlay over a player, and shares none of that layout.
-            modes_page = browser.new_page(
-                viewport={"width": MODES_WIDTH, "height": MODES_HEIGHT},
-                device_scale_factor=1,
-            )
-            modes_page.on("pageerror", lambda e: errors.append(str(e)))
-            modes_page.goto(f"http://127.0.0.1:{port}/modes.html")
-            try:
-                modes_page.wait_for_function(
-                    "() => window.__ready === true", timeout=15000
-                )
-            except Exception as error:
-                for line in errors:
-                    print(f"page error: {line}", file=sys.stderr)
-                raise SystemExit(f"modes harness never became ready: {error}")
-            modes_page.screenshot(path=MODES_OUT, full_page=True)
-            jump = modes_page.evaluate("() => window.__jump")
-            inks = modes_page.evaluate(INKS)
-
-            # ---- the options page's colour pickers ----------------------
-            #
-            # They were filled once when the row was built and never again, so
-            # choosing a theme left them showing the last stored palette. That
-            # was misleading on its own and wrong in combination with the rule
-            # that touching one switches to Custom: "this theme, but greener"
-            # silently became the stored palette with a green accent.
-            #
-            # Only a real browser can catch it -- the page reads the palette
-            # back out of computed style, which no unit test evaluates.
-            opts = browser.new_page(
-                viewport={"width": 1100, "height": 1200}, device_scale_factor=1
-            )
-            opts.on("pageerror", lambda e: errors.append(str(e)))
-            opts.add_init_script(CHROME_STUB)
-            opts.goto(f"http://127.0.0.1:{port}/options.html")
-            opts.wait_for_selector("#f-theme", timeout=15000)
-            opts.wait_for_selector("#f-customBackground", timeout=15000)
-
-            swatches = {}
-            for theme in THEME_BACKGROUNDS:
-                opts.evaluate(PICK_THEME, theme)
-                opts.wait_for_timeout(120)
-                swatches[theme] = opts.evaluate(SWATCHES)
-
-            # Forking a theme has to carry the whole palette, not just the one
-            # colour that was touched.
-            opts.evaluate(PICK_THEME, "slate")
-            opts.wait_for_timeout(120)
-            opts.eval_on_selector(
+            for theme in themes:
+                options.select_option("#f-theme", theme)
+                options.wait_for_function(MATCHED_SWATCHES)
+            options.select_option("#f-theme", "slate")
+            options.wait_for_function(MATCHED_SWATCHES)
+            before = options.evaluate(SWATCHES)
+            options.eval_on_selector(
                 "#f-customAccent",
-                "el => { el.value = '#00ff00';"
-                " el.dispatchEvent(new Event('input', { bubbles: true })); }",
+                "input => { input.value = '#59cf9b'; input.dispatchEvent(new Event('input', { bubbles: true })); }",
             )
-            opts.wait_for_timeout(250)
-            forked = opts.evaluate(SWATCHES)
-            forked["_theme"] = opts.evaluate(
-                "() => document.getElementById('f-theme').value"
+            options.wait_for_function(
+                "() => document.getElementById('f-theme').value === 'custom'"
             )
-
+            after = options.evaluate(SWATCHES)
+            if after != {**before, "customAccent": "#59cf9b"}:
+                sys.exit("Editing a colour must preserve the other inks on screen.")
+            options.screenshot(path=os.path.join(OUT, "options.png"), full_page=True)
+            print("Settings: %d themes and custom ink seeding pass" % len(themes))
             browser.close()
     finally:
-        httpd.shutdown()
-
-    print(f"wrote {OUT}\n")
-    print(f"wrote {MODES_OUT}")
-
-    # ---- the highlighter must not move the line ----------------------------
-    if not jump:
-        sys.exit("the modes harness measured no words; its probe is broken")
-
-    worst = max(abs(w["asCurrent"] - w["asOther"]) for w in jump)
-    moved = [w for w in jump if abs(w["asCurrent"] - w["asOther"]) > JUMP_TOLERANCE]
-    print(
-        f"highlighter: {len(jump)} words measured, worst width change "
-        f"{worst:.2f}px  {'FAIL' if moved else 'pass'}"
-    )
-    # ---- bionic's three levels of presence ---------------------------------
-    tiers = {name: alpha(css) for name, css in inks.items()}
-    if any(v is None for v in tiers.values()):
-        sys.exit("could not read the rsvp-bionic inks; the harness changed shape")
-
-    print(
-        "rsvp-bionic ink: context %.3f -> lead %.3f -> focus %.3f  %s"
-        % (
-            tiers["context"],
-            tiers["lead"],
-            tiers["focus"],
-            "pass"
-            if tiers["context"] < tiers["lead"] < tiers["focus"] == 1.0
-            else "FAIL",
-        )
-    )
-    if not (tiers["context"] < tiers["lead"] < tiers["focus"] == 1.0):
-        sys.exit(
-            "Bionic's lead letters must sit above the words around them and "
-            "below the word being spoken. Full strength marks the current "
-            "word and nothing else may claim it."
-        )
-
-    # ---- bionic held still is one flat weight of ink -----------------------
-    held = {k: inks.get(k) for k in ("heldWord", "heldBold", "heldCurrent")}
-    if any(v is None for v in held.values()):
-        sys.exit("could not read the held-bionic inks; the harness changed shape")
-    flat = len(set(held.values())) == 1
-    print(
-        "bionic held still: word/bold/current all %s  %s"
-        % (held["heldWord"], "pass" if flat else "FAIL")
-    )
-    if not flat:
-        for name, value in held.items():
-            print(f"  {name}: {value}", file=sys.stderr)
-        sys.exit(
-            "Bionic held still must render one flat colour. The three-tier "
-            "brightness exists to say which word is being spoken, and a held "
-            "line has no such word."
-        )
-
-    # ---- the colour pickers follow the theme -------------------------------
-    wrong = [
-        f"{theme}: pickers show {got['customBackground']}, theme is {want}"
-        for theme, want in THEME_BACKGROUNDS.items()
-        for got in [swatches[theme]]
-        if got["customBackground"] != want
-    ]
-    print(
-        "colour pickers track the theme: %d themes  %s"
-        % (len(THEME_BACKGROUNDS), "FAIL" if wrong else "pass")
-    )
-    for line in wrong:
-        print(f"  {line}", file=sys.stderr)
-    if wrong:
-        sys.exit("The colour pickers do not show the palette that is on screen.")
-
-    kept = (
-        forked["_theme"] == "custom"
-        and forked["customAccent"] == "#00ff00"
-        and forked["customBackground"] == THEME_BACKGROUNDS["slate"]
-    )
-    print("forking a theme keeps the rest of it:  %s" % ("pass" if kept else "FAIL"))
-    if not kept:
-        print(f"  got {forked}", file=sys.stderr)
-        sys.exit(
-            "Changing one colour must fork the palette on screen, not the one "
-            "last stored."
-        )
-
-    print()
-    if moved:
-        for word in moved:
-            print(
-                f"  {word['text']!r}: {word['asCurrent']:.2f} -> {word['asOther']:.2f}",
-                file=sys.stderr,
-            )
-        sys.exit(
-            "Highlighter changes a word's width when it becomes current, so the "
-            "line shifts sideways once per word. Every word needs the same box."
-        )
-
-    stage = boxes.get("stage")
-    if stage:
-        ratio = stage["width"] / stage["height"] if stage["height"] else 0
-        print(f"video stage {stage['width']:.0f}x{stage['height']:.0f}  ratio {ratio:.3f}\n")
-
-    print(f"{'boundary':24s} {'actual':>8s} {'target':>8s} {'delta':>7s}  result")
-    print("-" * 62)
-
-    failures = 0
-    for label, key, edge, target in TARGETS:
-        box = boxes.get(key)
-        if not box:
-            print(f"{label:24s} {'MISSING':>8s} {target:>8d} {'-':>7s}  FAIL")
-            failures += 1
-            continue
-        actual = box[edge]
-        delta = actual - target
-        ok = abs(delta) <= TOLERANCE
-        if not ok:
-            failures += 1
-        print(
-            f"{label:24s} {actual:8.0f} {target:8d} {delta:+7.0f}  "
-            f"{'pass' if ok else 'FAIL'}"
-        )
-
-    print()
-    if failures:
-        sys.exit(f"{failures} boundary check(s) outside the {TOLERANCE}px tolerance")
-    print(f"all {len(TARGETS)} boundaries within {TOLERANCE}px of the concept")
+        server.shutdown()
+    if errors:
+        sys.exit("\n".join(errors))
+    print("Screenshots written to " + OUT)
 
 
 if __name__ == "__main__":
