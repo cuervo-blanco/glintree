@@ -15,7 +15,6 @@
 import { ReaderOverlay } from "../content/overlay";
 import { buildLines, readsWholeLine } from "../content/lines";
 import { classify } from "../reader-core/words";
-import { BUILT_IN_PROFILES } from "../profiles";
 import {
   DEFAULTS,
   MODE_LABELS,
@@ -36,14 +35,7 @@ const SENTENCE =
 const WORDS = SENTENCE.split(" ").map(classify);
 
 const params = new URLSearchParams(window.location.search);
-const wanted = params.get("profile");
 const grid = params.get("grid") === "1";
-
-function profileSettings(id: string): Partial<Settings> {
-  const found = BUILT_IN_PROFILES.find((p) => p.id === id);
-  if (!found) throw new Error(`no built-in profile "${id}"`);
-  return found.settings;
-}
 
 /**
  * The view the real render loop would build at this word.
@@ -111,8 +103,6 @@ async function main(): Promise<void> {
         104,
       );
     }
-  } else if (wanted) {
-    strip("", { ...profileSettings(wanted), autoScale: false }, 190);
   } else {
     // Tuned so the neighbours fit whole rather than being trimmed at the mask.
     // The trimming is real and correct in use, where the words are moving and
