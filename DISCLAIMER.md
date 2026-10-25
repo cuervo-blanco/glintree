@@ -18,23 +18,10 @@ anything.
 - Use it for your own personal viewing, in accordance with **YouTube's Terms of
   Service** and any applicable law. You are solely responsible for how you use
   it.
-- Transcripts, summaries and notes you produce are derived from someone else's
-  copyrighted work. Keeping them for private study is one thing; republishing
-  them is another, and this project neither condones nor supports doing so.
+- Captions belong to their respective rights holders. This extension displays
+  them in the browser for personal viewing and study.
 - YouTube's caption interfaces are not a documented public API. They may change
   or be withdrawn at any time, which may break this extension without notice.
-
-## AI output
-
-Summaries and generated chapter names are produced by a large language model
-reading the transcript. **They can be wrong, incomplete, or confidently
-mistaken.** They are not a record of what was said in the video, and should not
-be relied upon for anything consequential. The video itself is the source; the
-summary is a convenience.
-
-When you use the assistant, transcript text is sent to the AI provider you
-configured. That provider's terms and privacy policy apply to it — see
-[PRIVACY.md](PRIVACY.md).
 
 ## No warranty
 
