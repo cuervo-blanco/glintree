@@ -78,7 +78,7 @@ export class ReaderControls {
     );
     this.status.append(this.pace, this.focus);
 
-    // Only the controls own these events; the word stream stays click-through.
+    // Editing controls must never trigger the player's playback shortcuts.
     for (const type of [
       "click",
       "dblclick",
@@ -167,9 +167,13 @@ export class ReaderControls {
     if (this.pace.textContent !== text) this.pace.textContent = text;
   }
 
+  attachFocus(controls: HTMLElement): void {
+    this.status.append(controls);
+  }
+
   setIdle(idle: boolean): void {
     for (const target of this.reader.querySelectorAll<HTMLElement>(
-      ".trf-stage, .trf-resize-width, .trf-resize-text",
+      ".trf-stage, .trf-resize-handle",
     )) {
       target.tabIndex = idle ? -1 : 0;
       target.setAttribute("aria-disabled", String(idle));
@@ -227,9 +231,7 @@ export class ReaderControls {
     return Object.fromEntries(
       CUSTOM_COLOR_KEYS.map((key, index) => [
         key,
-        style
-          .getPropertyValue(["--bg", "--text", "--faded", "--accent"][index])
-          .trim(),
+        style.getPropertyValue(["--text", "--faded", "--accent"][index]).trim(),
       ]).filter(([, value]) => /^#[0-9a-f]{6}$/i.test(value)),
     );
   }
