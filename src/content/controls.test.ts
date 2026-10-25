@@ -2,9 +2,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULTS, type Settings } from "../settings";
 import { ReaderControls } from "./controls";
+import { BookView } from "./book";
 
 const save = vi.fn().mockResolvedValue(undefined);
 const mounted: ReaderControls[] = [];
+const books: BookView[] = [];
 
 function mount(romanizable = true, patch: Partial<Settings> = {}) {
   const player = document.createElement("div");
@@ -58,6 +60,7 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const controls of mounted.splice(0)) controls.destroy();
+  for (const book of books.splice(0)) book.destroy();
   document.body.replaceChildren();
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -68,15 +71,15 @@ describe("reader controls", () => {
   it("skips invisible caption editing targets during a gap", () => {
     const { reader, controls } = mount();
     const targets = reader.querySelectorAll<HTMLElement>(
-      ".trf-stage, .trf-resize-handle",
+      ".trf-stage, .trf-resize-handle, .trf-size-handle",
     );
     controls.setIdle(true);
     expect(Array.from(targets, (target) => target.tabIndex)).toEqual([
-      -1, -1, -1, -1, -1,
+      -1, -1, -1, -1,
     ]);
     controls.setIdle(false);
     expect(Array.from(targets, (target) => target.tabIndex)).toEqual([
-      0, 0, 0, 0, 0,
+      0, 0, 0, 0,
     ]);
   });
   it("opens and closes settings by clicking the captions without a separate button", () => {
@@ -114,13 +117,24 @@ describe("reader controls", () => {
     expect(dialog.hidden).toBe(true);
   });
 
-  it("keeps appearance choices in the panel and leaves direct sizing and positioning to the captions", () => {
+  it("exits Focus with Escape from the caption stage", () => {
+    const { player, stage, onChange } = mount(true, { focusMode: true });
+    const playerKey = vi.fn();
+    player.addEventListener("keydown", playerKey);
+    stage.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ focusMode: false });
+    expect(playerKey).not.toHaveBeenCalled();
+  });
+
+  it("keeps text size in the panel and window geometry on the captions", () => {
     const { reader, input } = mount();
     for (const key of [
       "horizontalPosition",
       "verticalPosition",
-      "fontSize",
       "boxWidth",
+      "boxHeight",
       "autoScale",
     ]) {
       expect(reader.querySelector(`[data-field="${key}"]`)).toBeNull();
@@ -128,13 +142,103 @@ describe("reader controls", () => {
     for (const key of [
       "mode",
       "font",
+      "fontSize",
       "theme",
       "customAccent",
       "romanize",
       "focusMode",
     ] as const)
       expect(input(key)).toBeInstanceOf(HTMLElement);
-    expect(reader.querySelectorAll(".trf-resize-handle")).toHaveLength(4);
+    expect(reader.querySelectorAll(".trf-resize-handle")).toHaveLength(2);
+  });
+
+  it("changes text size independently of the caption window", () => {
+    const { input, onChange } = mount(true, { boxWidth: 70 });
+    input("fontSize").value = "36";
+    input("fontSize").dispatchEvent(new Event("input", { bubbles: true }));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ fontSize: 36 });
+    vi.advanceTimersByTime(250);
+    expect(save).toHaveBeenCalledExactlyOnceWith({ fontSize: 36 });
+  });
+
+  it("docks appearance beside Reading mode and keeps edits and its close button usable", () => {
+    const { player, reader, stage, dialog, input, onChange } = mount();
+    const book = new BookView(reader, [], () => stage.click());
+    books.push(book);
+    book.setActive(true);
+    player.classList.add("trf-focus-reading");
+    book.root.click();
+    expect(dialog.hidden).toBe(false);
+    expect(dialog.classList.contains("trf-controls--sidebar")).toBe(true);
+    expect(dialog.style.left).toBe("-210px");
+    expect(dialog.style.top).toBe("-492px");
+    expect(dialog.style.getPropertyValue("--trf-panel-width")).toBe("320px");
+    expect(dialog.style.getPropertyValue("--trf-panel-height")).toBe("520px");
+    const text = input("fontSize");
+    text.focus();
+    text.value = "40";
+    text.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ fontSize: 40 });
+    expect(document.activeElement).toBe(text);
+    dialog
+      .querySelector<HTMLButtonElement>('[aria-label="Close appearance"]')!
+      .click();
+    expect(dialog.hidden).toBe(true);
+    expect(reader.classList.contains("trf-editing")).toBe(false);
+    expect(document.activeElement).toBe(book.root);
+  });
+
+  it("returns an open appearance panel to its floating layout when Reading mode ends", () => {
+    const { player, stage, dialog, controls } = mount();
+    player.classList.add("trf-focus-reading");
+    stage.click();
+    expect(dialog.classList.contains("trf-controls--sidebar")).toBe(true);
+    player.classList.remove("trf-focus-reading");
+    controls.layout();
+    expect(dialog.hidden).toBe(false);
+    expect(dialog.classList.contains("trf-controls--sidebar")).toBe(false);
+    expect(dialog.style.getPropertyValue("--trf-panel-width")).toBe("340px");
+  });
+
+  it("labels the editable controls rather than their displayed values", () => {
+    const { reader, input } = mount();
+    for (const row of reader.querySelectorAll<HTMLLabelElement>(
+      ".trf-control-row",
+    )) {
+      expect(row.control).toBe(input(row.dataset.field as keyof Settings));
+    }
+  });
+
+  it("closes appearance before a second Escape from book captions exits Focus", () => {
+    const { player, reader, stage, input, dialog, onChange } = mount(true, {
+      focusMode: true,
+      focusReading: true,
+    });
+    const view = new BookView(reader, [], () => stage.click());
+    books.push(view);
+    view.setActive(true);
+    const book = view.root;
+    const playerKey = vi.fn();
+    player.addEventListener("keydown", playerKey);
+    stage.click();
+    expect(book.getAttribute("aria-expanded")).toBe("true");
+    input("fontSize").focus();
+    input("fontSize").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(dialog.hidden).toBe(true);
+    expect(document.activeElement).toBe(book);
+    expect(book.getAttribute("aria-expanded")).toBe("false");
+    expect(onChange).not.toHaveBeenCalled();
+    book.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange).toHaveBeenLastCalledWith({
+      focusMode: false,
+      focusReading: false,
+    });
+    expect(playerKey).not.toHaveBeenCalled();
   });
 
   it("previews gesture and range edits immediately, then coalesces their saved values", () => {
@@ -288,6 +392,56 @@ describe("reader controls", () => {
     expect(
       player.querySelector<HTMLDivElement>(".trf-reader-status")!.hidden,
     ).toBe(false);
+  });
+
+  it("lets Show video leave Reading mode after native fullscreen restores it", () => {
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => null,
+    });
+    const fullscreen = vi.spyOn(document, "fullscreenElement", "get");
+    const { player, controls, onChange, input } = mount(true, {
+      focusReading: true,
+    });
+    const checkbox = input("focusMode") as HTMLInputElement;
+    const backdrop = player.querySelector<HTMLDivElement>(
+      ".trf-focus-backdrop",
+    )!;
+    const focus = player.querySelector<HTMLButtonElement>(
+      ".trf-reader-status button",
+    )!;
+    expect(backdrop.hidden).toBe(true);
+    fullscreen.mockReturnValue(player);
+    document.dispatchEvent(new Event("fullscreenchange"));
+    expect(backdrop.hidden).toBe(false);
+    expect(focus.getAttribute("aria-label")).toBe("Show video");
+    expect(checkbox.checked).toBe(true);
+    controls.setHidden(true);
+    expect(backdrop.hidden).toBe(true);
+    controls.setHidden(false);
+    expect(backdrop.hidden).toBe(false);
+    focus.click();
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      focusMode: false,
+      focusReading: false,
+    });
+    expect(backdrop.hidden).toBe(true);
+    expect(checkbox.checked).toBe(false);
+    onChange.mockClear();
+    controls.apply({ ...DEFAULTS, focusReading: true });
+    expect(checkbox.checked).toBe(true);
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event("change"));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      focusMode: false,
+      focusReading: false,
+    });
+    controls.apply({ ...DEFAULTS, focusReading: true });
+    fullscreen.mockReturnValue(null);
+    document.dispatchEvent(new Event("fullscreenchange"));
+    expect(backdrop.hidden).toBe(true);
+    expect(focus.textContent).toBe("Focus");
+    expect(checkbox.checked).toBe(false);
   });
 
   it("shows an estimated current WPM, pause state and caption gaps out of the word stream", () => {
