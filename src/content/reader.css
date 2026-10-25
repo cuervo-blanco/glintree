@@ -3,8 +3,8 @@
  *
  * A fixed focal point is the entire mechanism, so nothing here may move: no
  * animation competes with the word stream beyond a sub-80ms swap on opacity.
- * Every theme avoids pure black and pure white — that contrast is what makes a
- * long session hurt.
+ * A plain black background supports each text-colour preset. Opacity controls
+ * how much of the video shows through.
  *
  * Selectors are prefixed `trf-` throughout because this stylesheet lands in
  * someone else's page, and every rule is scoped under `.trf-reader` so nothing
@@ -12,7 +12,7 @@
  */
 
 .trf-reader {
-  --bg: #16181b;
+  --bg: #000;
   --text: #e8e6e3;
   --faded: #6e7278;
   --accent: #e4572e;
@@ -55,17 +55,17 @@
   z-index: 60; /* above the video, below YouTube's own controls and menus */
   width: var(--trf-width, 62%);
   max-width: 94%;
-  padding: 14px 20px;
+  padding: 8px 12px;
   box-sizing: border-box;
-  border-radius: 14px;
+  border-radius: 0;
   background: color-mix(
     in srgb,
     var(--bg) var(--trf-bg-opacity, 88%),
     transparent
   );
-  border: 1px solid var(--edge);
-  box-shadow: 0 18px 40px -14px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(3px);
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
   opacity: 1;
   transition: opacity 60ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
@@ -73,90 +73,49 @@
 }
 
 .trf-reader[data-theme="paper"] {
-  --bg: #fdfbf7;
-  --text: #23211e;
-  --faded: #9b958c;
-  --accent: #c1442a;
-  --edge: rgba(0, 0, 0, 0.1);
+  --text: #f4f0e8;
+  --faded: #aba69d;
+  --accent: #e3bb8e;
 }
-
 .trf-reader[data-theme="sepia"] {
-  --bg: #f4ecd8;
-  --text: #2b2620;
-  --faded: #a0937d;
-  --accent: #b5442b;
-  --edge: rgba(70, 55, 30, 0.14);
+  --text: #ead8ac;
+  --faded: #a79b80;
+  --accent: #edbc73;
 }
-
 .trf-reader[data-theme="contrast"] {
-  --bg: #101214;
   --text: #fffff0;
-  --faded: #7c8085;
-  --accent: #ff6b3d;
-  --edge: rgba(255, 255, 255, 0.18);
+  --faded: #aaaaaa;
+  --accent: #ff955f;
 }
-
-/* The three neutrals. Nothing in the surround carries a hue, which leaves the
-   pivot as the only coloured thing on screen — so "neutral" describes the
-   surround and never the accent, which has to stay findable at a glance. */
 .trf-reader[data-theme="slate"] {
-  --bg: #23262b;
   --text: #dcdee1;
   --faded: #8a8f97;
   --accent: #d2694a;
-  --edge: rgba(255, 255, 255, 0.09);
 }
-
 .trf-reader[data-theme="mist"] {
-  --bg: #eef0f1;
-  --text: #26292d;
-  --faded: #8e939a;
-  --accent: #b0503a;
-  --edge: rgba(0, 0, 0, 0.1);
+  --text: #dce4e9;
+  --faded: #8b9ca8;
+  --accent: #99c4d8;
 }
-
 .trf-reader[data-theme="nocturne"] {
-  --bg: #1a1f27;
   --text: #d5dae1;
   --faded: #6f7a88;
   --accent: #e0714a;
-  --edge: rgba(255, 255, 255, 0.09);
 }
-
-/* The lyric band: gold on translucent blue, the way a burned-in hymn or song
-   line has looked for decades. Warm text on a cool ground is the whole trick —
-   it stays legible over almost any picture without needing to be opaque. */
 .trf-reader[data-theme="lyric"] {
-  --bg: #0d1a26;
   --text: #ffd75e;
-  --faded: #8fa3b4;
+  --faded: #a38f62;
   --accent: #ffe9a3;
-  --edge: rgba(255, 230, 150, 0.18);
 }
-
-/* The caption box: white on black, and nothing else. The most legible
-   combination there is, and the reason broadcast captions have never moved on
-   from it. Not pure black or pure white, per the rule the rest of the reader
-   follows. */
 .trf-reader[data-theme="caption"] {
-  --bg: #0b0b0c;
   --text: #f4f4f2;
   --faded: #9a9a98;
   --accent: #f4f4f2;
-  --edge: transparent;
 }
-
-/* Your own five colours.
-   Four of them are pickers; `--edge` is derived from the text colour, so there
-   is no way to choose a border that cannot be seen against the background you
-   just chose. The fallbacks are the Focus palette, which is what shows if the
-   overlay is ever mounted before `apply` has run. */
 .trf-reader[data-theme="custom"] {
-  --bg: var(--trf-custom-bg, #16181b);
   --text: var(--trf-custom-text, #e8e6e3);
   --faded: var(--trf-custom-faded, #6e7278);
   --accent: var(--trf-custom-accent, #e4572e);
-  --edge: color-mix(in srgb, var(--trf-custom-text, #e8e6e3) 14%, transparent);
 }
 
 /* Between cues, or paused. Recede rather than disappear, so the reader keeps
