@@ -157,6 +157,10 @@ export interface Settings {
   romanize: boolean;
   /** Cover the video while keeping playback and captions running. */
   focusMode: boolean;
+  /** Show paragraph context while reading in Focus or fullscreen. */
+  focusReading: boolean;
+  /** Keep the current word at the centre of the reading area. */
+  readingCentered: boolean;
 }
 
 /**
@@ -200,6 +204,8 @@ export const DEFAULTS: Settings = {
   language: "en",
   romanize: false,
   focusMode: false,
+  focusReading: false,
+  readingCentered: false,
 };
 
 /** Saved settings can outlive fields and enum values removed by an update. */
