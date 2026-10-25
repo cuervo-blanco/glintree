@@ -142,13 +142,6 @@ def main() -> None:
                 os.path.join(OUT_DIR, "modes.gif"),
             )
 
-            # Two finished looks, for the profiles section.
-            for profile in ("lyric", "black-box"):
-                save_gif(
-                    record(page, f"{base}?profile={profile}", 760, 190),
-                    os.path.join(OUT_DIR, f"profile-{profile}.gif"),
-                )
-
             browser.close()
 
             for line in errors:
