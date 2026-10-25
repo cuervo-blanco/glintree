@@ -64,12 +64,17 @@ prerequisite for this fork.
   caption for both handles, including at player edges.
 - Reading mode inherits the caption font/inks, retains a stable paragraph around
   the current source word. Paragraph view follows wrapped lines; Centre word
-  shifts only the active line to keep the current word fixed on both axes.
+  shifts only the active line to keep the focal grapheme fixed on both axes.
+  Split words with the same grapheme-safe recognition point used by RSVP. Keep
+  their font geometry unchanged as the highlight advances. Forward excerpt
+  refreshes start on an existing wrapped line so retained context does not rewrap.
+  A 60ms fade may soften context at adjacent line changes; never fade the current
+  word, delay its timing, animate seeks, or ignore reduced-motion preferences.
   Keep its view preference separate from the six caption modes. Do not hide the
   whole overlay when replacing its stage: controls and the blackout must survive.
   Dock appearance on the left while editing, reserve its width for the book,
   and keep the independent transcript on the right. Use the same accent ink for
-  resize arrows and the current Reading word.
+  resize arrows and the current Reading focal letter.
 - The transcript uses the full source words, including words filtered from the
   reader. Romanization changes display only, never source timings.
 - The on-player switch must stay available while disabled and without captions.
