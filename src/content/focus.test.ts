@@ -21,14 +21,30 @@ function mount(player = document.createElement("div")) {
   const video = document.createElement("video");
   const reader = document.createElement("div");
   reader.className = "trf-reader";
+  const stage = document.createElement("div");
+  stage.className = "trf-stage";
+  reader.append(stage);
   player.append(video, reader);
   document.body.append(player);
-  let settings = { focusMode: false, romanize: false };
-  const onFocus = vi.fn((focusMode: boolean) => {
-    settings = { ...settings, focusMode };
+  let settings = {
+    focusMode: false,
+    romanize: false,
+    focusReading: false,
+    readingCentered: false,
+  };
+  const onCenter = vi.fn((readingCentered: boolean) => {
+    settings = { ...settings, readingCentered };
     view.apply(settings);
   });
-  const view = new FocusView(player, video, words, { onFocus });
+  const onReading = vi.fn((focusReading: boolean) => {
+    settings = {
+      ...settings,
+      focusReading,
+      ...(focusReading ? { focusMode: true } : {}),
+    };
+    view.apply(settings);
+  });
+  const view = new FocusView(player, video, words, { onCenter, onReading });
   views.push(view);
   player.append(view.controls);
   view.apply(settings);
@@ -42,8 +58,11 @@ function mount(player = document.createElement("div")) {
     view,
     player,
     video,
-    onFocus,
+    stage,
+    onCenter,
+    onReading,
     button,
+    book: player.querySelector<HTMLElement>(".trf-book")!,
     panel: player.querySelector<HTMLElement>(".trf-transcript")!,
     body: player.querySelector<HTMLElement>(".trf-transcript-body")!,
     entries: () =>
@@ -54,6 +73,13 @@ function mount(player = document.createElement("div")) {
 }
 
 beforeEach(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
   fullscreenElement = null;
   Object.defineProperty(document, "fullscreenElement", {
     configurable: true,
@@ -69,6 +95,7 @@ afterEach(() => {
   for (const view of views.splice(0)) view.destroy();
   document.body.replaceChildren();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("focus transcript", () => {
@@ -212,102 +239,91 @@ describe("focus transcript", () => {
   );
 });
 
-describe("fullscreen focus", () => {
-  it("centres focus in native fullscreen and restores normal video when Focus is off", () => {
-    const { view, player, button } = mount();
-    view.apply({ focusMode: true, romanize: false });
+describe("focus reading", () => {
+  it("keeps paragraph and centred-word views selectable without a fullscreen control", () => {
+    const { view, button, player, onCenter } = mount();
+    expect(player.textContent).not.toContain("Fullscreen");
+    const centered = button("Centre word");
+    expect(centered.hidden).toBe(true);
+    view.apply({ focusMode: true, focusReading: true, romanize: false });
+    expect(centered.hidden).toBe(false);
+    expect(centered.getAttribute("aria-pressed")).toBe("false");
+    centered.click();
+    expect(onCenter).toHaveBeenCalledExactlyOnceWith(true);
+    expect(centered.getAttribute("aria-pressed")).toBe("true");
+    centered.click();
+    expect(onCenter).toHaveBeenLastCalledWith(false);
+  });
+  it("offers Reading mode in Focus and native fullscreen, retaining its preference outside them", () => {
+    const { view, player, button, book, onReading } = mount();
+    const reading = button("Reading mode");
+    expect(reading.hidden).toBe(true);
     setFullscreen(player);
-    expect(player.classList.contains("trf-focus-fullscreen")).toBe(true);
-    expect(button("Exit fullscreen").getAttribute("aria-pressed")).toBe("true");
-    view.apply({ focusMode: false, romanize: false });
-    expect(player.classList.contains("trf-focus-fullscreen")).toBe(false);
-    expect(document.fullscreenElement).toBe(player);
+    expect(reading.hidden).toBe(false);
+    reading.click();
+    expect(onReading).toHaveBeenCalledWith(true);
+    expect(book.hidden).toBe(false);
+    expect(player.classList.contains("trf-focus-reading")).toBe(true);
+    expect(reading.getAttribute("aria-pressed")).toBe("true");
+    setFullscreen(null);
+    expect(book.hidden).toBe(false);
+    view.apply({ focusMode: false, focusReading: true, romanize: false });
+    expect(book.hidden).toBe(true);
+    expect(reading.hidden).toBe(true);
+    expect(reading.getAttribute("aria-pressed")).toBe("true");
+    expect(player.classList.contains("trf-focus-reading")).toBe(false);
+    view.apply({ focusMode: true, focusReading: true, romanize: false });
+    expect(book.hidden).toBe(false);
+    reading.click();
+    expect(onReading).toHaveBeenLastCalledWith(false);
+    expect(book.hidden).toBe(true);
   });
 
-  it("enters fullscreen on the existing player and exits with the same control", async () => {
-    const { player, button, onFocus } = mount();
-    const request = vi.fn(async () => setFullscreen(player));
-    player.requestFullscreen = request;
-    const fullscreen = button("Fullscreen focus");
-    fullscreen.click();
-    await vi.waitFor(() => expect(fullscreen.disabled).toBe(false));
-    expect(onFocus).toHaveBeenCalledWith(true);
-    expect(request).toHaveBeenCalledOnce();
-    expect(player.classList.contains("trf-focus-fullscreen")).toBe(true);
-    fullscreen.click();
-    await vi.waitFor(() =>
-      expect(fullscreen.textContent).toBe("Fullscreen focus"),
-    );
-    expect(document.fullscreenElement).toBeNull();
-    expect(player.classList.contains("trf-focus-fullscreen")).toBe(false);
+  it("keeps the book and optional transcript on the same original word while paused", () => {
+    const { view, book, button, entries, video } = mount();
+    view.update(1400);
+    view.apply({ focusMode: true, focusReading: true, romanize: false });
+    expect(book.querySelector("[aria-current]")?.textContent).toBe("नमस्ते");
+    expect(book.querySelectorAll(".trf-book-word")).toHaveLength(words.length);
+    button("Transcript").click();
+    entries()[2].click();
+    expect(video.paused).toBe(true);
+    expect(video.currentTime).toBe(2.7);
+    expect(book.querySelector("[aria-current]")?.textContent).toBe("বাংলা");
+    expect(entries()[2].getAttribute("aria-current")).toBe("true");
+    view.apply({ focusMode: true, focusReading: true, romanize: true });
+    expect(book.querySelector("[aria-current]")?.textContent).toBe("bāṁlā");
+    expect(entries()[2].textContent).toBe("bāṁlā");
+    view.update(4000);
+    expect(book.querySelector("[aria-current]")).toBeNull();
+    expect(book.textContent).toContain("um");
   });
 
-  it("reports a failed request without leaving fullscreen layout applied", async () => {
-    const { player, button } = mount();
-    player.requestFullscreen = vi.fn().mockRejectedValue(new Error("blocked"));
-    const fullscreen = button("Fullscreen focus");
-    fullscreen.click();
-    await vi.waitFor(() => expect(fullscreen.disabled).toBe(false));
-    expect(player.classList.contains("trf-focus-fullscreen")).toBe(false);
-    expect(player.querySelector(".trf-focus-notice")?.textContent).toContain(
-      "unavailable",
+  it("opens appearance from book captions without seeking or forwarding player events", () => {
+    const { view, book, stage, player, video } = mount();
+    view.apply({ focusMode: true, focusReading: true, romanize: false });
+    const settings = vi.fn();
+    const playerKey = vi.fn();
+    stage.addEventListener("click", settings);
+    player.addEventListener("keydown", playerKey);
+    book.querySelector<HTMLElement>(".trf-book-word")!.click();
+    book.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
     );
+    expect(settings).toHaveBeenCalledTimes(2);
+    expect(playerKey).not.toHaveBeenCalled();
+    expect(video.currentTime).toBe(0);
   });
 
-  it("handles fullscreen exit rejection without an unhandled promise", async () => {
-    const { view, player, button } = mount();
-    view.apply({ focusMode: true, romanize: false });
-    setFullscreen(player);
-    vi.mocked(document.exitFullscreen).mockRejectedValue(new Error("blocked"));
-    const fullscreen = button("Exit fullscreen");
-    fullscreen.click();
-    await vi.waitFor(() => expect(fullscreen.disabled).toBe(false));
-    expect(player.querySelector(".trf-focus-notice")?.textContent).toContain(
-      "unavailable",
-    );
-  });
-
-  it("cleans up a fullscreen request that completes after its view is destroyed", async () => {
-    const { view, player, button } = mount();
-    let resolve!: () => void;
-    player.requestFullscreen = vi.fn(
-      () =>
-        new Promise<void>((done) => {
-          resolve = done;
-        }),
-    );
-    button("Fullscreen focus").click();
+  it("hides the book during ads and removes it with its session", () => {
+    const { view, book, player } = mount();
+    view.apply({ focusMode: true, focusReading: true, romanize: false });
+    view.setHidden(true);
+    expect(book.hidden).toBe(true);
+    view.setHidden(false);
+    expect(book.hidden).toBe(false);
     view.destroy();
-    setFullscreen(player);
-    resolve();
-    await vi.waitFor(() =>
-      expect(document.exitFullscreen).toHaveBeenCalledOnce(),
-    );
-    expect(document.fullscreenElement).toBeNull();
-    expect(
-      player.querySelector(".trf-transcript, .trf-focus-tools"),
-    ).toBeNull();
-    expect(player.classList.contains("trf-focus-fullscreen")).toBe(false);
-  });
-
-  it("does not end a newer view's fullscreen when an old request settles", async () => {
-    const old = mount();
-    let resolve!: () => void;
-    old.player.requestFullscreen = vi.fn(
-      () =>
-        new Promise<void>((done) => {
-          resolve = done;
-        }),
-    );
-    old.button("Fullscreen focus").click();
-    old.view.destroy();
-    const next = mount(old.player);
-    next.view.apply({ focusMode: true, romanize: false });
-    setFullscreen(old.player);
-    old.view.destroy();
-    resolve();
-    await Promise.resolve();
-    expect(document.exitFullscreen).not.toHaveBeenCalled();
-    expect(old.player.classList.contains("trf-focus-fullscreen")).toBe(true);
+    expect(book.isConnected).toBe(false);
+    expect(player.classList.contains("trf-focus-reading")).toBe(false);
   });
 });
