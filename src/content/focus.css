@@ -1,12 +1,23 @@
 #movie_player {
   --trf-transcript-width: min(360px, 45%);
+  --trf-appearance-width: min(320px, 40%);
+  --trf-appearance-space: 0px;
+  --trf-transcript-space: 0px;
+}
+
+#movie_player.trf-transcript-open {
+  --trf-transcript-space: var(--trf-transcript-width);
+}
+
+#movie_player.trf-focus-reading:has(.trf-reader.trf-editing) {
+  --trf-appearance-space: var(--trf-appearance-width);
 }
 
 .trf-reader ~ .trf-transcript {
   position: absolute;
   top: 0;
   right: 0;
-  bottom: 52px;
+  bottom: 80px;
   z-index: 61;
   display: flex;
   flex-direction: column;
@@ -31,10 +42,6 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-}
-
-.trf-reader-status .trf-focus-notice {
-  max-width: 180px;
 }
 
 .trf-reader ~ .trf-transcript header {
@@ -115,27 +122,77 @@
   justify-content: flex-end;
 }
 
-#movie_player.trf-focus-fullscreen .trf-reader {
-  top: 50% !important;
-  left: 50% !important;
-  bottom: auto !important;
-  transform: translate(-50%, -50%) !important;
-  width: 90%;
-  max-width: 90%;
+#movie_player.trf-focus-reading .trf-reader {
+  top: 52px !important;
+  left: calc(
+    var(--trf-appearance-space) +
+      (100% - var(--trf-appearance-space) - var(--trf-transcript-space)) / 2
+  ) !important;
+  bottom: 80px !important;
+  transform: translateX(-50%) !important;
+  width: calc(
+    (100% - var(--trf-appearance-space) - var(--trf-transcript-space)) * 0.9
+  ) !important;
+  max-width: calc(
+    (100% - var(--trf-appearance-space) - var(--trf-transcript-space)) * 0.9
+  ) !important;
+  height: auto;
+  padding: 0;
   background: transparent;
 }
 
-#movie_player.trf-focus-fullscreen.trf-transcript-open .trf-reader {
-  left: calc((100% - var(--trf-transcript-width)) / 2) !important;
-  width: calc((100% - var(--trf-transcript-width)) * 0.9);
-  max-width: calc((100% - var(--trf-transcript-width)) * 0.9);
+#movie_player.trf-focus-reading .trf-reader > .trf-stage {
+  display: none;
 }
 
-#movie_player.trf-focus-fullscreen.ytp-autohide
-  .trf-reader-status:not(:has(:focus-visible)),
-#movie_player.trf-focus-fullscreen.ytp-autohide
-  .trf-reader:not(.trf-editing):not(:has(:focus-visible))
-  [class*="trf-resize-"] {
-  opacity: 0;
-  pointer-events: none;
+/* The tools remain reachable when a small player wraps them over the excerpt. */
+#movie_player.trf-focus-reading .trf-reader-status {
+  z-index: 61;
+}
+
+#movie_player.trf-focus-reading .trf-reader.trf-editing {
+  z-index: 62;
+}
+
+.trf-reader .trf-book {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--faded);
+  font-family: var(--trf-font);
+  font-size: var(--trf-size);
+  font-style: var(--trf-style, normal);
+  font-weight: var(--trf-weight, 600);
+  line-height: 1.55;
+  letter-spacing: var(--trf-tracking);
+  text-transform: var(--trf-case, none);
+  text-shadow: var(--trf-outline, none);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.trf-reader .trf-book p {
+  max-width: 70ch;
+  margin: 0 auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trf-reader .trf-book-word {
+  display: inline-block;
+}
+
+.trf-reader .trf-book-current {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.trf-reader .trf-book:focus-visible {
+  outline: 1px solid var(--faded);
+  outline-offset: -2px;
+}
+
+/* Keep playback and seeking above the blackout, with a clear pointer lane. */
+#movie_player:has(> .trf-reader) .ytp-chrome-bottom {
+  z-index: 63;
 }
