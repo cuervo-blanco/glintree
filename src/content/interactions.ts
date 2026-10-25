@@ -6,7 +6,8 @@ interface InteractionOptions {
   onToggle: () => void;
 }
 
-type Gesture = "move" | "width" | "text";
+type Corner = "nw" | "ne" | "sw" | "se";
+type Gesture = "move" | Corner;
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
 
@@ -28,19 +29,21 @@ export class CaptionInteractions {
     stage.title =
       "Click to adjust captions. Drag to move. Arrow keys move; Enter opens settings.";
     this.attach(stage, "move");
-    for (const [kind, label, symbol] of [
-      ["width", "Resize caption width", "↔"],
-      ["text", "Resize caption text", "↘"],
+    for (const [corner, label] of [
+      ["nw", "top left"],
+      ["ne", "top right"],
+      ["sw", "bottom left"],
+      ["se", "bottom right"],
     ] as const) {
       const handle = document.createElement("button");
       handle.type = "button";
-      handle.className = `trf-resize-${kind}`;
-      handle.setAttribute("aria-label", label);
-      handle.title = `${label}. Drag or use arrow keys.`;
-      handle.textContent = symbol;
+      handle.className = "trf-resize-handle";
+      handle.dataset.corner = corner;
+      handle.setAttribute("aria-label", `Resize captions from ${label}`);
+      handle.title = "Drag a corner to resize captions. Arrow keys resize.";
       reader.append(handle);
       this.handles.push(handle);
-      this.attach(handle, kind);
+      this.attach(handle, corner);
     }
   }
 
@@ -71,6 +74,11 @@ export class CaptionInteractions {
       "keydown",
       (event) => {
         event.stopPropagation();
+        if (event.key === "Escape" && this.finish) {
+          event.preventDefault();
+          this.finish();
+          return;
+        }
         if (kind === "move" && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           this.options.onToggle();
@@ -78,16 +86,32 @@ export class CaptionInteractions {
         }
         if (!event.key.startsWith("Arrow")) return;
         event.preventDefault();
+        if (
+          this.reader.parentElement?.classList.contains("trf-focus-fullscreen")
+        )
+          return;
         const amount =
           (event.shiftKey ? 5 : 1) *
           (event.key === "ArrowLeft" || event.key === "ArrowDown" ? -1 : 1);
         const settings = this.options.getSettings();
-        if (kind === "text") this.textSize(settings.fontSize + amount);
-        else if (kind === "width") this.width(settings.boxWidth + amount);
-        else {
-          const player = this.reader.parentElement?.getBoundingClientRect();
-          if (!player?.width || !player.height) return;
-          const box = this.reader.getBoundingClientRect();
+        const player = this.reader.parentElement?.getBoundingClientRect();
+        if (!player?.width || !player.height) return;
+        const box = this.reader.getBoundingClientRect();
+        if (kind !== "move") {
+          const outward =
+            event.key === "ArrowLeft" || event.key === "ArrowRight"
+              ? (kind.endsWith("w") ? -1 : 1) *
+                (event.key === "ArrowLeft" ? -1 : 1)
+              : (kind.startsWith("n") ? -1 : 1) *
+                (event.key === "ArrowUp" ? -1 : 1);
+          this.resize(
+            box,
+            settings,
+            kind,
+            1 + (outward * (event.shiftKey ? 5 : 1)) / settings.fontSize,
+            player,
+          );
+        } else {
           const x =
             event.key === "ArrowLeft" || event.key === "ArrowRight"
               ? (amount * player.width) / 100
@@ -117,30 +141,43 @@ export class CaptionInteractions {
         this.finish?.();
         this.ignoreClick = false;
         target.focus({ preventScroll: true });
+        if (
+          this.reader.parentElement?.classList.contains("trf-focus-fullscreen")
+        )
+          return;
         const player = this.reader.parentElement?.getBoundingClientRect();
         if (!player?.width || !player.height) return;
         const box = this.reader.getBoundingClientRect();
         const settings = this.options.getSettings();
-        const scale =
-          (parseFloat(
-            getComputedStyle(this.reader).getPropertyValue("--trf-size"),
-          ) || settings.fontSize) / settings.fontSize;
         let dragged = false;
         target.setPointerCapture?.(event.pointerId);
         const move = (next: PointerEvent): void => {
           if (next.pointerId !== event.pointerId) return;
           next.stopPropagation();
+          if (
+            this.reader.parentElement?.classList.contains(
+              "trf-focus-fullscreen",
+            )
+          ) {
+            this.finish?.();
+            return;
+          }
           const dx = next.clientX - event.clientX;
           const dy = next.clientY - event.clientY;
           if (!dragged && Math.hypot(dx, dy) < 4) return;
           dragged = true;
           next.preventDefault();
           this.reader.classList.add("trf-dragging");
-          if (kind === "width")
-            this.width(settings.boxWidth + (dx * 200) / player.width);
-          else if (kind === "text")
-            this.textSize(settings.fontSize + (dx + dy) / (2 * scale));
-          else {
+          if (kind !== "move") {
+            const x = kind.endsWith("w") ? -dx : dx;
+            const y = kind.startsWith("n") ? -dy : dy;
+            // Project onto the original diagonal, keeping font and box in step.
+            const scale =
+              1 +
+              (x * box.width + y * box.height) /
+                (box.width ** 2 + box.height ** 2);
+            this.resize(box, settings, kind, scale, player);
+          } else {
             const size = this.reader.getBoundingClientRect();
             this.options.onChange(
               this.position(
@@ -184,6 +221,8 @@ export class CaptionInteractions {
     height: number,
     player: DOMRect,
   ): Partial<Settings> {
+    if (this.reader.parentElement?.classList.contains("trf-focus-fullscreen"))
+      return {};
     const x =
       clamp(left, player.left, player.right - width) + width / 2 - player.left;
     const y =
@@ -194,39 +233,42 @@ export class CaptionInteractions {
     };
   }
 
-  private width(value: number): void {
-    const boxWidth = clamp(Math.round(value), 25, 94);
-    const { horizontalPosition } = this.options.getSettings();
-    this.options.onChange({
-      boxWidth,
-      horizontalPosition: clamp(
-        horizontalPosition,
-        boxWidth / 2,
-        100 - boxWidth / 2,
+  private resize(
+    box: DOMRect,
+    settings: Settings,
+    corner: Corner,
+    scale: number,
+    player: DOMRect,
+  ): void {
+    const west = corner.endsWith("w");
+    const north = corner.startsWith("n");
+    const x = west ? box.right : box.left;
+    const y = north ? box.bottom : box.top;
+    const factor = clamp(
+      scale,
+      Math.max(25 / settings.boxWidth, 18 / settings.fontSize),
+      Math.min(
+        94 / settings.boxWidth,
+        72 / settings.fontSize,
+        (west ? x - player.left : player.right - x) / box.width,
+        (north ? y - player.top : player.bottom - y) / box.height,
       ),
+    );
+    const round = (value: number): number => Math.round(value * 10) / 10;
+    this.options.onChange({
+      boxWidth: round(settings.boxWidth * factor),
+      fontSize: round(settings.fontSize * factor),
     });
-    this.keepInPlayer();
-  }
-
-  private textSize(value: number): void {
-    this.options.onChange({ fontSize: clamp(Math.round(value), 18, 72) });
-    this.keepInPlayer();
-  }
-
-  private keepInPlayer(): void {
-    const player = this.reader.parentElement?.getBoundingClientRect();
-    if (!player?.width || !player.height) return;
-    const box = this.reader.getBoundingClientRect();
-    if (
-      box.left < player.left ||
-      box.right > player.right ||
-      box.top < player.top ||
-      box.bottom > player.bottom
-    ) {
-      this.options.onChange(
-        this.position(box.left, box.top, box.width, box.height, player),
-      );
-    }
+    const next = this.reader.getBoundingClientRect();
+    this.options.onChange(
+      this.position(
+        west ? x - next.width : x,
+        north ? y - next.height : y,
+        next.width,
+        next.height,
+        player,
+      ),
+    );
   }
 
   destroy(): void {
