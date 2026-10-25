@@ -9,8 +9,10 @@ leaving the player.
 1. Turn **TRF** on or off in YouTube’s player controls.
 2. Click the captions to open their settings. Click them again, click outside,
    or press Escape to close the panel.
-3. Drag the captions to move them. Drag any corner to resize them, like an
-   object in an image editor.
+3. Drag the captions to move them. Drag the arrow outside either side to change the caption
+   width. Drag the top-centre arrow up or down to change text size; height follows
+   the text automatically. The arrows appear when you hover over the captions.
+   **Text size** also remains available in caption settings.
 4. Click the extension’s toolbar icon to open the full settings page directly.
 
 The caption background is a plain black rectangle. Adjust its opacity, choose
@@ -19,10 +21,11 @@ presets provide starting points; save your own named preset to reuse a setup.
 There is no separate profile system.
 
 Keyboard users can focus the captions, press Enter or Space for settings, and
-use the arrow keys to move them. Shift moves in larger steps. Corner grips also
-support the arrow keys.
+use the arrow keys to move them. Shift moves in larger steps. Side handles also
+support the left/right arrow keys. The top-centre handle accepts up/down arrows
+to adjust text size. Keyboard focus also reveals the handles.
 
-## Reading modes
+## Caption modes
 
 | Mode          | What appears                                                |
 | ------------- | ----------------------------------------------------------- |
@@ -37,11 +40,27 @@ Bionic and Plain can hold a whole line still instead of sliding word by word.
 The small WPM indicator estimates the nearby caption pace and accounts for
 playback speed. It never controls the video or decides when words advance.
 
+Caption width controls how much surrounding text is visible. Height follows the
+font and, for held lines, the wrapped text. The surrounding-word settings still
+decide the available context.
+
 ## Focus and transcript
 
-**Focus** covers the picture while audio and caption timing continue.
-**Fullscreen focus** centres the text against a black screen. Move the pointer
-or use the keyboard to reveal the controls; Escape leaves fullscreen.
+**Focus** covers the picture while audio and caption timing continue. YouTube’s
+playback controls remain accessible below the reading area. Its own fullscreen
+button continues to work.
+
+Turn on **Reading mode** in Focus or fullscreen to read a flowing paragraph
+instead of the short caption. Surrounding lines stay visible at the caption’s
+text size, and only the word being spoken is emphasised. The text follows the
+current line rather than moving on every word. Turn on **Centre word** to hold
+the spoken word in the middle while its line moves past the focal point. Turn it
+off to return to the stable paragraph view. Reading mode and the sidebar leave
+a clear strip for playback controls and seeking. Click the text to open
+appearance settings in a left side panel; the transcript stays available on the
+right. The arrows and Reading mode’s focused word share the accent colour
+(orange by default). Turn Reading mode off to return
+to the selected caption mode. **Show video** leaves both Focus and Reading mode.
 
 **Transcript** opens a side panel containing the whole caption track. Click a
 word or timestamp to seek to it, including while paused. The current word is
@@ -49,8 +68,8 @@ marked as the video plays. Scroll to browse independently, then use **Follow**
 to return to the current word. The panel can be opened or closed independently
 of fullscreen.
 
-The old Read Mode, assistant, notes, library and export system have been removed.
-Focus and the transcript stay inside the existing player.
+The former study dashboard, assistant, notes, library and export system have
+been removed. Reading mode and the transcript stay inside the existing player.
 
 ## Languages and romanization
 
