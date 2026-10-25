@@ -347,7 +347,6 @@ export class ReaderOverlay {
    */
   private applyCustomPalette(settings: Settings): void {
     const palette: Record<string, string> = {
-      "--trf-custom-bg": settings.customBackground,
       "--trf-custom-text": settings.customText,
       "--trf-custom-faded": settings.customFaded,
       "--trf-custom-accent": settings.customAccent,
