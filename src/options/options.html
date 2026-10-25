@@ -3,390 +3,227 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TextReadsFast for YouTube</title>
+    <title>TextReadsFast settings</title>
     <link rel="stylesheet" href="reader.css" />
     <style>
       :root {
-        --page-bg: #fbfaf8;
-        --page-text: #1c1b19;
-        --page-muted: #8b8d90;
-        --page-edge: rgba(0, 0, 0, 0.12);
-        --page-accent: #c1442a;
-        color-scheme: light dark;
+        color-scheme: dark;
+        --page-bg: #16181b;
+        --page-text: #e8e6e3;
+        --page-muted: #a0a5ad;
+        --page-edge: #34383e;
+        --page-accent: #e4572e;
       }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --page-bg: #16181b;
-          --page-text: #e8e6e3;
-          --page-muted: #8b8d90;
-          --page-edge: rgba(255, 255, 255, 0.14);
-          --page-accent: #e4572e;
-        }
+      * {
+        box-sizing: border-box;
       }
-
       body {
         margin: 0;
-        padding: 40px 24px 64px;
+        padding: 32px 20px 64px;
         background: var(--page-bg);
         color: var(--page-text);
-        font-family:
-          "Geist",
-          system-ui,
-          -apple-system,
-          "Segoe UI",
+        font:
+          14px/1.5 system-ui,
           sans-serif;
-        font-size: 15px;
-        line-height: 1.55;
       }
-
       main {
-        max-width: 640px;
-        margin: 0 auto;
+        max-width: 720px;
+        margin: auto;
       }
-
       h1 {
-        font-size: 26px;
-        letter-spacing: -0.02em;
-        line-height: 1.1;
-        margin: 0 0 6px;
+        font-size: 24px;
+        margin: 0 0 8px;
       }
-
-      .lede {
-        color: var(--page-muted);
-        max-width: 60ch;
-        margin: 0 0 28px;
-      }
-
       h2 {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+        margin: 28px 0 10px;
+        font-size: 15px;
+      }
+      .lede,
+      .hint {
         color: var(--page-muted);
-        margin: 32px 0 10px;
       }
-
+      .lede {
+        margin: 0 0 24px;
+      }
+      #preview-host {
+        position: relative;
+        min-height: 130px;
+        display: grid;
+        align-items: center;
+        padding: 24px 0;
+        background: #24282d;
+      }
+      #preview {
+        position: relative;
+        left: auto;
+        bottom: auto;
+        transform: none;
+        width: 100%;
+        max-width: none;
+      }
       .group {
-        border: 1px solid var(--page-edge);
-        border-radius: 14px;
-        overflow: hidden;
+        border-top: 1px solid var(--page-edge);
       }
-
       .row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 20px;
-        padding: 14px 16px;
+        gap: 24px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--page-edge);
       }
-
-      .row + .row {
-        border-top: 1px solid var(--page-edge);
+      .row > div:first-child {
+        flex: 1;
       }
-
       .row label {
         font-weight: 500;
       }
-
       .row p {
-        margin: 2px 0 0;
-        font-size: 13px;
+        max-width: 48ch;
+        margin: 3px 0 0;
+        font-size: 12px;
         color: var(--page-muted);
-        max-width: 46ch;
       }
-
       .control {
-        flex: none;
         display: flex;
+        flex: none;
         align-items: center;
         gap: 10px;
       }
-
       select,
-      input[type="range"] {
+      input,
+      button {
         font: inherit;
+        color: inherit;
         accent-color: var(--page-accent);
       }
-
-      /*
-       * An explicit background, not `transparent`.
-       *
-       * Chrome paints the native dropdown list from the control's computed
-       * background: transparent resolves to a light default while the options
-       * inherit the page's light-on-dark text, so in dark mode the whole list
-       * came out pale grey on white and was effectively unreadable. Naming both
-       * colours — and again on `option`, which some platforms style separately —
-       * is what fixes it.
-       */
-      select {
+      select,
+      input[type="text"],
+      button {
+        max-width: 300px;
+        border: 1px solid var(--page-edge);
+        border-radius: 3px;
         padding: 6px 8px;
-        border-radius: 8px;
-        border: 1px solid var(--page-edge);
-        background-color: var(--page-bg);
-        color: var(--page-text);
-        color-scheme: light dark;
-        max-width: 320px;
+        background: var(--page-bg);
       }
-
       select option {
-        background-color: var(--page-bg);
+        background: var(--page-bg);
         color: var(--page-text);
       }
-
-      /* A swatch, not a form field. Chrome draws a native colour input as a
-         bordered button with the colour inset; stripping the chrome and letting
-         the colour reach the edges makes it read as the thing it sets. */
       input[type="color"] {
-        appearance: none;
-        -webkit-appearance: none;
-        width: 44px;
+        width: 42px;
         height: 28px;
-        padding: 0;
-        border: 1px solid var(--page-edge);
-        border-radius: 8px;
-        background: none;
-        cursor: pointer;
-      }
-
-      input[type="color"]::-webkit-color-swatch-wrapper {
         padding: 2px;
-      }
-
-      input[type="color"]::-webkit-color-swatch {
-        border: none;
-        border-radius: 6px;
-      }
-
-      /* The hex, beside the swatch. Uppercase so it reads as a code rather than
-         as a word, and monospaced so it does not reflow as the colour changes. */
-      .row[data-field^="custom"] output {
-        font-family: "Geist Mono", ui-monospace, monospace;
-        text-transform: uppercase;
-        min-width: 8ch;
-      }
-
-      output {
-        font-variant-numeric: tabular-nums;
-        font-size: 13px;
-        color: var(--page-muted);
-        min-width: 5ch;
-        text-align: right;
-      }
-
-      /* The preview carries its own reader palette, so the theme picker shows
-         the truth rather than the page's colours. It is a panel on a page
-         rather than an overlay on a player, so the positioning the reader uses
-         over video is neutralised here. */
-      #preview {
-        position: relative;
-        margin: 0 0 8px;
-        border-radius: 16px;
-        transform: none;
-        left: auto;
-        bottom: auto;
-        width: 100%;
-        max-width: none;
-      }
-
-      .ai-status {
-        margin: 12px 16px 4px;
-        font-size: 13px;
-        color: var(--page-muted);
-        min-height: 1.2em;
-      }
-
-      #group-ai textarea {
-        width: 100%;
-        font-family: "Geist Mono", ui-monospace, monospace;
-        font-size: 12px;
-        line-height: 1.5;
-        padding: 10px 12px;
-        border-radius: 8px;
         border: 1px solid var(--page-edge);
         background: transparent;
-        color: inherit;
-        resize: vertical;
       }
-
-      /* A control that does not currently decide anything should not look as
-         live as the one that does. */
+      output {
+        min-width: 6ch;
+        text-align: right;
+        color: var(--page-muted);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .row[data-field^="custom"] output {
+        min-width: 8ch;
+        font-family: ui-monospace, monospace;
+      }
       .row[data-inactive="true"] {
         opacity: 0.5;
       }
-
-      #group-device input[type="text"],
-      #group-ai input[type="password"],
-      #group-ai input[type="url"] {
-        font: inherit;
-        font-size: 13px;
-        min-width: 220px;
-        padding: 6px 10px;
-        border-radius: 8px;
-        border: 1px solid var(--page-edge);
-        background: transparent;
-        color: inherit;
-      }
-
-      a.profile-action {
-        display: inline-block;
-        text-decoration: none;
-      }
-
-      .hint {
-        font-size: 13px;
-        color: var(--page-muted);
-        margin-top: 10px;
-      }
-
-      /* ── the profile picker ── */
-
-      .group--profile {
-        padding: 14px 16px;
-      }
-
-      .profile-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-      }
-
-      .profile-row label {
-        font-weight: 500;
-      }
-
-      .profile-row select {
-        flex: 1;
-        max-width: 280px;
-      }
-
-      .profile-note {
-        margin: 8px 0 0;
-        font-size: 13px;
-        color: var(--page-muted);
-        min-height: 1.55em;
-      }
-
-      .profile-note--modified {
-        color: var(--page-accent);
-      }
-
-      .profile-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      /* An empty action row would still reserve its gap and push the note
-         around as buttons appear and disappear. */
-      .profile-actions:empty,
-      .profile-name-row[hidden] {
-        display: none;
-      }
-
-      .profile-action {
-        font: inherit;
-        font-size: 13px;
-        padding: 5px 12px;
-        border-radius: 8px;
-        border: 1px solid var(--page-edge);
-        background: transparent;
-        color: inherit;
+      button {
         cursor: pointer;
       }
-
-      .profile-action:hover {
-        border-color: var(--page-muted);
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
       }
-
-      .profile-action[hidden] {
-        display: none;
+      :focus-visible {
+        outline: 2px solid var(--page-accent);
+        outline-offset: 2px;
       }
-
-      .profile-action--primary {
-        border-color: var(--page-accent);
-        color: var(--page-accent);
-      }
-
-      .profile-action--danger:hover {
-        border-color: var(--page-accent);
-        color: var(--page-accent);
-      }
-
-      .profile-name-row {
+      .preset-row {
         display: flex;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 8px;
-        margin-top: 10px;
       }
-
-      .profile-name-row input {
-        font: inherit;
-        font-size: 13px;
-        flex: 1;
-        max-width: 260px;
-        padding: 5px 10px;
-        border-radius: 8px;
-        border: 1px solid var(--page-edge);
-        background: transparent;
-        color: inherit;
+      #preset-form {
+        display: contents;
+      }
+      #preset-name {
+        width: 170px;
+      }
+      #preset-status {
+        min-height: 1.5em;
+        margin: 6px 0 0;
+        font-size: 12px;
+      }
+      details {
+        margin-top: 12px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--page-muted);
+      }
+      @media (max-width: 600px) {
+        .row {
+          align-items: flex-start;
+          gap: 12px;
+          flex-direction: column;
+        }
+        .control {
+          width: 100%;
+        }
+        .control select {
+          max-width: 100%;
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>TextReadsFast for YouTube</h1>
+      <h1>TextReadsFast</h1>
       <p class="lede">
-        Subtitles, one word at a time, with the focal letter pinned in place so
-        your eyes stop jumping. Set YouTube's own playback speed higher — that
-        is where the time is saved.
+        Read faster or practise a language with YouTube captions. Click captions
+        to adjust them, drag to move, and drag a corner to resize.
       </p>
-
-      <div id="preview" class="trf-reader" data-theme="focus" data-mode="rsvp">
-        <div class="trf-stage">
-          <span class="trf-guide trf-guide--top"></span>
-          <span class="trf-guide trf-guide--bottom"></span>
-          <span class="trf-context trf-context--before"></span>
-          <span class="trf-word"></span>
-          <span class="trf-context trf-context--after"></span>
-        </div>
-      </div>
+      <div id="preview-host" aria-label="Live caption preview"></div>
       <p class="hint">
-        A live preview, running the same code as the player overlay.
+        A live preview of the captions. Changes save automatically.
       </p>
-
-      <h2>Profile</h2>
-      <div class="group group--profile" id="group-profile"></div>
-
+      <h2>Saved presets</h2>
+      <div class="preset-row">
+        <label for="preset-select">Load preset</label>
+        <select id="preset-select"></select>
+        <form id="preset-form">
+          <input
+            id="preset-name"
+            type="text"
+            maxlength="60"
+            required
+            placeholder="Preset name"
+            aria-label="Preset name"
+          />
+          <button type="submit">Save preset</button>
+        </form>
+        <button id="preset-delete" type="button" disabled>Delete</button>
+      </div>
+      <p id="preset-status" class="hint" role="status"></p>
       <h2>Reading</h2>
       <div class="group" id="group-reading"></div>
-
+      <details>
+        <summary>More reading options</summary>
+        <div id="advanced-reading" class="group"></div>
+      </details>
       <h2>Appearance</h2>
       <div class="group" id="group-appearance"></div>
-
-      <h2>Captions</h2>
+      <details>
+        <summary>More appearance options</summary>
+        <div id="advanced-appearance" class="group"></div>
+      </details>
+      <h2>Captions and language</h2>
       <div class="group" id="group-captions"></div>
-
-      <h2>This browser</h2>
-      <div class="group" id="group-device"></div>
-
-      <h2>Assistant</h2>
-      <div class="group" id="group-ai"></div>
-
-      <h2>Library</h2>
-      <div class="group group--profile">
-        <p style="margin: 0 0 10px; font-size: 13px; color: var(--page-muted)">
-          Every read-mode session is saved with its notes and chat.
-        </p>
-        <a
-          class="profile-action"
-          id="open-library"
-          href="library.html"
-          target="_blank"
-          rel="noreferrer"
-          >Open library</a
-        >
-      </div>
     </main>
     <script src="options.js"></script>
   </body>
