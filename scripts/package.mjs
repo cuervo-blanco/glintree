@@ -154,13 +154,17 @@ if (pkg.version !== manifest.version) {
   process.exit(1);
 }
 
-const files = walk(dist)
-  .map((full) => ({
+const files = [
+  ...walk(dist).map((full) => ({
     // Forward slashes, always. This is the whole reason this script exists.
     name: relative(dist, full).split(/[\\/]/).join("/"),
     data: readFileSync(full),
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
+  })),
+  {
+    name: "INSTALL-OPERA-GX.md",
+    data: readFileSync(join(root, "docs", "OPERA-GX.md")),
+  },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const names = files.map((f) => f.name);
 if (!names.includes("manifest.json")) {
