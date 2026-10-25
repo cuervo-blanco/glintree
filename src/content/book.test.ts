@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { classify } from "../reader-core/words";
 import { BookView } from "./book";
 import type { TimedWord } from "./captions";
+import { splitAtReadingOrp } from "./graphemes";
 
 const words = (count: number): TimedWord[] =>
   Array.from({ length: count }, (_, index) => ({
@@ -30,6 +31,33 @@ function mount(source = words(500)) {
       Array.from(view.root.querySelectorAll<HTMLElement>(".trf-book-word")),
     current: () => view.root.querySelector<HTMLElement>("[aria-current]"),
   };
+}
+
+function measure(
+  root: HTMLElement,
+  spans: () => HTMLElement[],
+  columns = 10,
+): void {
+  Object.defineProperty(root, "clientHeight", { get: () => 120 });
+  root.style.lineHeight = "24px";
+  vi.spyOn(root, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 100, 400, 120),
+  );
+  vi.spyOn(
+    HTMLSpanElement.prototype,
+    "getBoundingClientRect",
+  ).mockImplementation(function (this: HTMLSpanElement) {
+    const span = this.closest<HTMLElement>(".trf-book-word")!;
+    const index = Number(span.dataset.word) - Number(spans()[0].dataset.word);
+    const padding =
+      parseFloat(root.querySelector("p")!.style.paddingBlock) || 0;
+    return new DOMRect(
+      (index % columns) * 30,
+      100 + padding + Math.floor(index / columns) * 24 - root.scrollTop,
+      30,
+      24,
+    );
+  });
 }
 
 beforeEach(() => {
@@ -114,6 +142,29 @@ describe("book captions", () => {
     expect(current()?.textContent).toBe("नमस्ते");
   });
 
+  it("uses the RSVP focal cluster without splitting Hindi or Bengali marks", () => {
+    const source = ["reading", "नमस्ते", "বাংলা"].map((text, index) => ({
+      word: classify(text),
+      startMs: index * 1000,
+      endMs: (index + 1) * 1000,
+    }));
+    const { view, spans, current } = mount(source);
+    view.setActive(true);
+    for (const [index, entry] of source.entries()) {
+      view.update(index * 1000);
+      expect(current()?.textContent).toBe(entry.word.text);
+      expect(current()?.querySelector(".trf-pivot")?.textContent).toBe(
+        splitAtReadingOrp(entry.word.text).pivot,
+      );
+    }
+    const node = spans()[2];
+    view.apply(true);
+    expect(current()).toBe(node);
+    expect(current()?.querySelector(".trf-pivot")?.textContent).toBe(
+      splitAtReadingOrp("bāṁlā").pivot,
+    );
+  });
+
   it("moves only on a new wrapped line and recentres paused text after reflow", () => {
     const { view, root, spans } = mount(words(80));
     let columns = 10;
@@ -172,25 +223,84 @@ describe("book captions", () => {
       HTMLSpanElement.prototype,
       "getBoundingClientRect",
     ).mockImplementation(function (this: HTMLSpanElement) {
-      const transform = this.style.transform;
+      const span = this.closest<HTMLElement>(".trf-book-word")!;
+      const transform = span.style.transform;
       const offset = Number(
         transform.match(/translateX\(([-\d.]+)px\)/)?.[1] ?? 0,
       );
-      return new DOMRect(Number(this.dataset.word) * 30 + offset, 148, 20, 24);
+      const pivot = this.classList.contains("trf-pivot");
+      return new DOMRect(
+        Number(span.dataset.word) * 30 + offset + (pivot ? 4 : 0),
+        148,
+        pivot ? 4 : 20,
+        24,
+      );
     });
     view.apply(false, true);
     view.setActive(true);
     const first = spans()[0];
     for (const index of [1, 2, 7, 0]) {
       view.update(index * 1000 + 100);
-      const word = current()!.getBoundingClientRect();
+      const word = current()!
+        .querySelector(".trf-pivot")!
+        .getBoundingClientRect();
       expect(word.left + word.width / 2).toBe(200);
       expect(spans()[0]).toBe(first);
       observers[0].callback();
-      expect(current()!.getBoundingClientRect().left + 10).toBe(200);
+      expect(
+        current()!.querySelector(".trf-pivot")!.getBoundingClientRect().left +
+          2,
+      ).toBe(200);
     }
     view.apply(false, false);
     expect(spans().every((span) => span.style.transform === "")).toBe(true);
+  });
+
+  it("preserves existing wrapped lines when playback refills the excerpt", () => {
+    const { view, root, spans } = mount();
+    measure(root, spans);
+    view.update(250100);
+    view.setActive(true);
+    view.update(310100);
+    const before = spans()
+      .find((span) => span.dataset.word === "310")!
+      .getBoundingClientRect();
+    view.update(311100);
+    expect(spans()[0].dataset.word).toBe("210");
+    expect(spans()).toHaveLength(201);
+    const after = spans()
+      .find((span) => span.dataset.word === "310")!
+      .getBoundingClientRect();
+    expect(after.left).toBe(before.left);
+    expect(after.top).toBe(before.top);
+  });
+
+  it("fades context at adjacent line changes, including sentence gaps, and respects reduced motion", () => {
+    const { view, root, spans } = mount(words(8));
+    measure(root, spans, 2);
+    const motion = vi.fn().mockReturnValue({ matches: false });
+    vi.stubGlobal("matchMedia", motion);
+    view.setActive(true);
+    const animate = vi.fn();
+    for (const span of spans()) Object.assign(span, { animate });
+    const cancel = vi.fn();
+    Object.assign(spans()[3], { getAnimations: () => [{ cancel }] });
+    view.update(100);
+    view.update(1100);
+    expect(animate).not.toHaveBeenCalled();
+    view.update(1900);
+    view.update(2100);
+    expect(animate).toHaveBeenCalledTimes(7);
+    expect(animate.mock.contexts).not.toContain(spans()[2]);
+    expect(animate.mock.calls[0][1].duration).toBe(60);
+    view.update(3100);
+    expect(cancel).toHaveBeenCalledOnce();
+    motion.mockReturnValue({ matches: true });
+    view.update(4100);
+    expect(animate).toHaveBeenCalledTimes(7);
+    motion.mockReturnValue({ matches: false });
+    view.update(6100);
+    expect(animate).toHaveBeenCalledTimes(7);
   });
 
   it("opens settings accessibly and releases its geometry observer with the session", () => {
