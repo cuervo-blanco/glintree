@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULTS, type Settings } from "../settings";
-import { FIELDS } from "../settingsFields";
 import { ReaderControls } from "./controls";
 
 const save = vi.fn().mockResolvedValue(undefined);
@@ -10,15 +9,30 @@ const mounted: ReaderControls[] = [];
 function mount(romanizable = true, patch: Partial<Settings> = {}) {
   const player = document.createElement("div");
   const reader = document.createElement("div");
+  reader.className = "trf-reader";
+  const stage = document.createElement("div");
+  stage.className = "trf-stage";
+  stage.textContent = "বাংলা";
+  reader.append(stage);
   player.append(reader);
   document.body.append(player);
+  vi.spyOn(player, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, 1000, 600),
+  );
+  vi.spyOn(reader, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(210, 492, 580, 60),
+  );
   const onChange = vi.fn();
   const controls = new ReaderControls(
     reader,
     { ...DEFAULTS, ...patch },
     { romanizable, onChange },
   );
+  controls.mount(player);
   mounted.push(controls);
+  const dialog = reader.querySelector<HTMLDivElement>(
+    '[role="dialog"][aria-label="Caption appearance"]',
+  )!;
   const input = (key: keyof Settings) => {
     const element = reader.querySelector<HTMLInputElement | HTMLSelectElement>(
       `[data-field="${key}"] input, [data-field="${key}"] select`,
@@ -26,13 +40,20 @@ function mount(romanizable = true, patch: Partial<Settings> = {}) {
     if (!element) throw new Error(`missing control: ${key}`);
     return element;
   };
-  return { player, reader, controls, onChange, input };
+  return { player, reader, stage, dialog, controls, onChange, input };
 }
 
 beforeEach(() => {
   vi.useFakeTimers();
   save.mockClear();
   vi.stubGlobal("chrome", { storage: { sync: { set: save } } });
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
 });
 
 afterEach(() => {
@@ -40,39 +61,125 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("reader controls", () => {
-  it("previews every edit immediately and saves a settled slider drag once", () => {
-    const { input, onChange } = mount();
-    const size = input("fontSize");
-    for (const value of [30, 31, 32]) {
-      size.value = String(value);
-      size.dispatchEvent(new Event("input", { bubbles: true }));
-      vi.advanceTimersByTime(100);
-    }
-    expect(onChange.mock.calls).toEqual([
-      [{ fontSize: 30 }],
-      [{ fontSize: 31 }],
-      [{ fontSize: 32 }],
+  it("skips invisible caption editing targets during a gap", () => {
+    const { reader, controls } = mount();
+    const targets = reader.querySelectorAll<HTMLElement>(
+      ".trf-stage, .trf-resize-width, .trf-resize-text",
+    );
+    controls.setIdle(true);
+    expect(Array.from(targets, (target) => target.tabIndex)).toEqual([
+      -1, -1, -1,
     ]);
-    expect(save).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(150);
-    expect(save).toHaveBeenCalledExactlyOnceWith({ fontSize: 32 });
+    controls.setIdle(false);
+    expect(Array.from(targets, (target) => target.tabIndex)).toEqual([0, 0, 0]);
+  });
+  it("opens and closes settings by clicking the captions without a separate button", () => {
+    const { reader, stage, dialog } = mount();
+    expect(dialog.hidden).toBe(true);
+    expect(reader.querySelector("summary")).toBeNull();
+    expect(
+      Array.from(reader.querySelectorAll("button")).some(
+        (button) => button.textContent === "Appearance",
+      ),
+    ).toBe(false);
+    stage.click();
+    expect(dialog.hidden).toBe(false);
+    expect(stage.getAttribute("aria-expanded")).toBe("true");
+    stage.click();
+    expect(dialog.hidden).toBe(true);
+    expect(stage.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("keeps the last edits when navigation destroys the controls mid-drag", () => {
-    const { input, controls, reader } = mount();
-    input("fontSize").value = "36";
-    input("fontSize").dispatchEvent(new Event("input"));
+  it("closes with Escape or an outside click and returns keyboard focus to the captions", () => {
+    const { player, stage, dialog, input } = mount();
+    stage.click();
+    input("font").focus();
+    const escape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    input("font").dispatchEvent(escape);
+    expect(dialog.hidden).toBe(true);
+    expect(document.activeElement).toBe(stage);
+    expect(escape.defaultPrevented).toBe(true);
+    stage.click();
+    player.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    expect(dialog.hidden).toBe(true);
+  });
+
+  it("keeps appearance choices in the panel and leaves direct sizing and positioning to the captions", () => {
+    const { reader, input } = mount();
+    for (const key of [
+      "horizontalPosition",
+      "verticalPosition",
+      "fontSize",
+      "boxWidth",
+      "autoScale",
+    ]) {
+      expect(reader.querySelector(`[data-field="${key}"]`)).toBeNull();
+    }
+    for (const key of [
+      "mode",
+      "font",
+      "theme",
+      "customAccent",
+      "romanize",
+      "focusMode",
+    ] as const)
+      expect(input(key)).toBeInstanceOf(HTMLElement);
+    expect(
+      reader.querySelector('[aria-label="Resize caption width"]'),
+    ).not.toBeNull();
+    expect(
+      reader.querySelector('[aria-label="Resize caption text"]'),
+    ).not.toBeNull();
+  });
+
+  it("previews gesture and range edits immediately, then coalesces their saved values", () => {
+    const { stage, input, onChange } = mount();
+    stage.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    );
+    expect(onChange).toHaveBeenCalledWith({
+      horizontalPosition: 51,
+      verticalPosition: 8,
+    });
+    const spacing = input("letterSpacing");
+    for (const value of [1, 1.25, 1.5]) {
+      spacing.value = String(value);
+      spacing.dispatchEvent(new Event("input", { bubbles: true }));
+      vi.advanceTimersByTime(100);
+    }
+    expect(onChange).toHaveBeenLastCalledWith({ letterSpacing: 1.5 });
+    expect(save).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(150);
+    expect(save).toHaveBeenCalledExactlyOnceWith({
+      horizontalPosition: 51,
+      verticalPosition: 8,
+      letterSpacing: 1.5,
+    });
+  });
+
+  it("keeps the last edits when navigation destroys the reader mid-edit", () => {
+    const { input, controls, player, reader } = mount();
+    input("textWeight").value = "700";
+    input("textWeight").dispatchEvent(new Event("input"));
     input("theme").value = "sepia";
     input("theme").dispatchEvent(new Event("change"));
     controls.destroy();
     expect(save).toHaveBeenCalledExactlyOnceWith({
-      fontSize: 36,
+      textWeight: 700,
       theme: "sepia",
     });
     expect(reader.querySelector(".trf-controls")).toBeNull();
+    expect(
+      player.querySelector(".trf-reader-status, .trf-focus-backdrop"),
+    ).toBeNull();
     vi.advanceTimersByTime(500);
     expect(save).toHaveBeenCalledTimes(1);
   });
@@ -92,42 +199,26 @@ describe("reader controls", () => {
     expect(onChange).toHaveBeenLastCalledWith({ romanize: true });
   });
 
-  it("syncs settings without replacing the focused control", () => {
-    const { input, controls, reader } = mount();
-    const size = input("fontSize");
-    size.focus();
+  it("syncs external settings without replacing a focused control", () => {
+    const { stage, input, controls, reader } = mount();
+    stage.click();
+    const spacing = input("letterSpacing");
+    spacing.focus();
     controls.apply({
       ...DEFAULTS,
-      fontSize: 48,
+      letterSpacing: 2,
       mode: "plain",
       romanize: true,
     });
-    expect(document.activeElement).toBe(size);
-    expect(input("fontSize")).toBe(size);
-    expect(size.value).toBe("48");
+    expect(document.activeElement).toBe(spacing);
+    expect(input("letterSpacing")).toBe(spacing);
+    expect(spacing.value).toBe("2");
     expect(
-      reader.querySelector('[data-field="fontSize"] output')?.textContent,
-    ).toBe("48px");
+      reader.querySelector('[data-field="letterSpacing"] output')?.textContent,
+    ).toBe("2px");
     expect(input("mode").value).toBe("plain");
     expect((input("romanize") as HTMLInputElement).checked).toBe(true);
     expect(save).not.toHaveBeenCalled();
-  });
-
-  it("closes with Escape and returns focus to the appearance button", () => {
-    const { reader, input } = mount();
-    const details = reader.querySelector("details")!;
-    const summary = reader.querySelector("summary")!;
-    details.open = true;
-    input("fontSize").focus();
-    const escape = new KeyboardEvent("keydown", {
-      key: "Escape",
-      bubbles: true,
-      cancelable: true,
-    });
-    input("fontSize").dispatchEvent(escape);
-    expect(details.open).toBe(false);
-    expect(document.activeElement).toBe(summary);
-    expect(escape.defaultPrevented).toBe(true);
   });
 
   it.each(["click", "keydown", "wheel"])(
@@ -137,7 +228,7 @@ describe("reader controls", () => {
       const playerEvent = vi.fn();
       player.addEventListener(type, playerEvent);
       const event = new Event(type, { bubbles: true, cancelable: true });
-      input("fontSize").dispatchEvent(event);
+      input("letterSpacing").dispatchEvent(event);
       expect(playerEvent).not.toHaveBeenCalled();
       expect(event.defaultPrevented).toBe(false);
     },
@@ -170,23 +261,48 @@ describe("reader controls", () => {
     expect(save).toHaveBeenCalledWith(onChange.mock.calls[0][0]);
   });
 
-  it("makes every shared appearance setting available on the reader", () => {
-    const { reader, input } = mount();
-    for (const field of FIELDS.filter(
-      (field) => field.group === "appearance",
-    )) {
-      expect(input(field.key)).toBeInstanceOf(HTMLElement);
-      expect(
-        reader.querySelector(`[data-field="${field.key}"]`)?.textContent,
-      ).toContain(field.label);
-    }
-    const mode = FIELDS.find((field) => field.key === "mode");
-    expect(mode?.kind).toBe("select");
-    if (mode?.kind !== "select") throw new Error("missing reading modes");
+  it("lets the panel and the discreet focus control cover and restore the video", () => {
+    const { player, input, controls, onChange } = mount();
+    const backdrop = player.querySelector<HTMLDivElement>(
+      ".trf-focus-backdrop",
+    )!;
+    const focus = player.querySelector<HTMLButtonElement>(
+      ".trf-reader-status button",
+    )!;
+    expect(backdrop.hidden).toBe(true);
+    const checkbox = input("focusMode") as HTMLInputElement;
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change"));
+    expect(onChange).toHaveBeenLastCalledWith({ focusMode: true });
+    expect(backdrop.hidden).toBe(false);
+    expect(focus.getAttribute("aria-label")).toBe("Show video");
+    expect(focus.getAttribute("aria-pressed")).toBe("true");
+    focus.click();
+    expect(onChange).toHaveBeenLastCalledWith({ focusMode: false });
+    expect(checkbox.checked).toBe(false);
+    expect(backdrop.hidden).toBe(true);
+    controls.setHidden(true);
+    controls.apply({ ...DEFAULTS, focusMode: true });
+    expect(backdrop.hidden).toBe(true);
     expect(
-      Array.from((input("mode") as HTMLSelectElement).options).map(
-        (option) => option.value,
-      ),
-    ).toEqual(mode.options.map((option) => option.value));
+      player.querySelector<HTMLDivElement>(".trf-reader-status")!.hidden,
+    ).toBe(true);
+    controls.setHidden(false);
+    expect(backdrop.hidden).toBe(false);
+    expect(
+      player.querySelector<HTMLDivElement>(".trf-reader-status")!.hidden,
+    ).toBe(false);
+  });
+
+  it("shows an estimated current WPM, pause state and caption gaps out of the word stream", () => {
+    const { player, stage, controls } = mount();
+    const pace = player.querySelector(".trf-reader-status > output")!;
+    controls.setSpeed(303, false);
+    expect(pace.textContent).toBe("≈ 300 WPM");
+    controls.setSpeed(300, true);
+    expect(pace.textContent).toBe("Paused");
+    controls.setSpeed(null, false);
+    expect(pace.textContent).toBe("— WPM");
+    expect(stage.contains(pace)).toBe(false);
   });
 });
