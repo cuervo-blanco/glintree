@@ -45,7 +45,11 @@
   );
 
   position: absolute;
-  left: 50%;
+  left: clamp(
+    calc(var(--trf-width, 62%) / 2),
+    var(--trf-left, 50%),
+    calc(100% - var(--trf-width, 62%) / 2)
+  );
   bottom: var(--trf-bottom, 8%);
   transform: translateX(-50%);
   z-index: 60; /* above the video, below YouTube's own controls and menus */
