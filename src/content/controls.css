@@ -1,7 +1,7 @@
 .trf-reader .trf-controls {
   position: absolute;
   z-index: 2;
-  color: var(--text);
+  color: #ddd;
   font:
     400 13px/1.4 system-ui,
     sans-serif;
@@ -19,12 +19,12 @@
   box-sizing: border-box;
   overflow: auto;
   overscroll-behavior: contain;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  background: var(--bg);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid #444;
+  border-radius: 3px;
+  background: #171717;
+  box-shadow: none;
   scrollbar-width: thin;
-  scrollbar-color: var(--faded) var(--bg);
+  scrollbar-color: #777 var(--bg);
 }
 
 .trf-reader .trf-control-row {
@@ -42,7 +42,7 @@
 
 .trf-reader .trf-control-row output {
   margin-left: 6px;
-  color: var(--faded);
+  color: #999;
   font-variant-numeric: tabular-nums;
 }
 
@@ -52,16 +52,16 @@
   min-width: 0;
   margin: 0;
   box-sizing: border-box;
-  accent-color: var(--accent);
+  accent-color: #aaa;
   font: inherit;
 }
 
 .trf-reader .trf-control-row select {
   padding: 4px;
-  border: 1px solid var(--faded);
+  border: 1px solid #777;
   border-radius: 4px;
-  color: var(--text);
-  background: var(--bg);
+  color: #ddd;
+  background: #171717;
 }
 
 .trf-reader .trf-control-row input[type="checkbox"] {
@@ -73,13 +73,13 @@
   width: 40px;
   height: 26px;
   padding: 2px;
-  border: 1px solid var(--faded);
+  border: 1px solid #777;
   border-radius: 4px;
-  background: var(--bg);
+  background: #171717;
 }
 
 .trf-reader .trf-controls :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid #aaa;
   outline-offset: 2px;
 }
 
@@ -95,47 +95,56 @@
 
 .trf-reader.trf-editing,
 .trf-reader.trf-interactive:has(:focus-visible) {
-  outline: 1px solid var(--accent);
+  outline: 1px solid #aaa;
   outline-offset: 2px;
 }
 
-.trf-reader .trf-resize-width,
-.trf-reader .trf-resize-text {
+.trf-reader .trf-resize-handle {
   position: absolute;
-  right: 3px;
   z-index: 1;
-  width: 22px;
-  height: 22px;
+  width: 10px;
+  height: 10px;
   padding: 0;
-  border: 1px solid var(--edge);
-  border-radius: 5px;
-  color: var(--text);
-  background: var(--bg);
-  font:
-    14px/1 system-ui,
-    sans-serif;
+  border: 1px solid #ddd;
+  border-radius: 0;
+  background: #333;
   touch-action: none;
-  user-select: none;
   opacity: 0;
   pointer-events: none;
 }
-
-.trf-reader .trf-resize-width {
-  top: calc(50% - 11px);
-  cursor: ew-resize;
-}
-
-.trf-reader .trf-resize-text {
-  bottom: 2px;
+/* A caption against the player edge must still have a complete grip to grab. */
+.trf-reader .trf-resize-handle[data-corner="nw"] {
+  left: 0;
+  top: 0;
   cursor: nwse-resize;
 }
-
+.trf-reader .trf-resize-handle[data-corner="ne"] {
+  right: 0;
+  top: 0;
+  cursor: nesw-resize;
+}
+.trf-reader .trf-resize-handle[data-corner="sw"] {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+}
+.trf-reader .trf-resize-handle[data-corner="se"] {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
 .trf-reader:not(.trf-idle):is(:hover, :has(:focus-visible), .trf-editing)
-  .trf-resize-width,
-.trf-reader:not(.trf-idle):is(:hover, :has(:focus-visible), .trf-editing)
-  .trf-resize-text {
+  .trf-resize-handle {
   opacity: 1;
   pointer-events: auto;
+}
+
+.trf-focus-fullscreen .trf-reader .trf-resize-handle {
+  display: none;
+}
+
+.trf-focus-fullscreen .trf-reader .trf-stage {
+  cursor: pointer;
 }
 
 /* Cover the picture without stopping presented frames or the video clock. */
@@ -143,7 +152,7 @@
   position: absolute;
   inset: 0;
   z-index: 59;
-  background: #0b0b0c;
+  background: #000;
   pointer-events: none;
 }
 
