@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { downloadPath } from "./settings";
+import { DEFAULTS, downloadPath, loadSettings } from "./settings";
+
+it("keeps the existing placement and video visible when new settings are absent", async () => {
+  const previous = (globalThis as unknown as { chrome?: unknown }).chrome;
+  (globalThis as unknown as { chrome: unknown }).chrome = {
+    storage: { sync: { get: async () => ({ fontSize: 30 }) } },
+  };
+  try {
+    const settings = await loadSettings();
+    expect(settings.fontSize).toBe(30);
+    expect(settings.horizontalPosition).toBe(50);
+    expect(settings.verticalPosition).toBe(DEFAULTS.verticalPosition);
+    expect(settings.focusMode).toBe(false);
+  } finally {
+    (globalThis as unknown as { chrome?: unknown }).chrome = previous;
+  }
+});
 
 describe("downloadPath", () => {
   /*
