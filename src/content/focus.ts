@@ -1,22 +1,24 @@
 import { wordAt, type TimedWord } from "./captions";
 import { buildLines } from "./lines";
 import { romanize } from "./romanize";
+import { BookView } from "./book";
 
 interface FocusSettings {
   focusMode: boolean;
   romanize: boolean;
+  focusReading?: boolean;
+  readingCentered?: boolean;
 }
-
-const activeViews = new WeakMap<HTMLElement, FocusView>();
 
 export class FocusView {
   readonly controls = document.createElement("div");
-  private fullscreen = document.createElement("button");
   private transcript = document.createElement("button");
+  private reading = document.createElement("button");
+  private book: BookView;
   private panel = document.createElement("aside");
   private body = document.createElement("div");
   private follow = document.createElement("button");
-  private notice = document.createElement("span");
+  private centered = document.createElement("button");
   private buttons: HTMLButtonElement[] = [];
   private abort = new AbortController();
   private settings: FocusSettings = { focusMode: false, romanize: false };
@@ -31,22 +33,36 @@ export class FocusView {
     private player: HTMLElement,
     private video: HTMLVideoElement,
     private words: TimedWord[],
-    private options: { onFocus: (enabled: boolean) => void },
+    private options: {
+      onCenter: (enabled: boolean) => void;
+      onReading: (enabled: boolean) => void;
+    },
   ) {
-    activeViews.set(player, this);
+    const reader = player.querySelector<HTMLElement>(".trf-reader")!;
+    this.book = new BookView(reader, words, () =>
+      reader.querySelector<HTMLElement>(".trf-stage")?.click(),
+    );
     this.controls.className = "trf-focus-tools";
-    this.fullscreen.type = this.transcript.type = this.follow.type = "button";
-    this.fullscreen.textContent = "Fullscreen focus";
-    this.fullscreen.addEventListener(
-      "click",
-      () => void this.enterFullscreen(),
+    this.transcript.type =
+      this.follow.type =
+      this.reading.type =
+      this.centered.type =
+        "button";
+    this.reading.textContent = "Reading mode";
+    this.reading.title = "Read a flowing paragraph around the current word";
+    this.reading.addEventListener("click", () =>
+      this.options.onReading(!this.settings.focusReading),
+    );
+    this.centered.textContent = "Centre word";
+    this.centered.title =
+      "Keep the current word in the middle of the reading area";
+    this.centered.addEventListener("click", () =>
+      this.options.onCenter(!this.settings.readingCentered),
     );
     this.transcript.textContent = "Transcript";
     this.transcript.setAttribute("aria-expanded", "false");
     this.transcript.addEventListener("click", () => this.toggleTranscript());
-    this.notice.className = "trf-focus-notice";
-    this.notice.setAttribute("role", "status");
-    this.controls.append(this.fullscreen, this.transcript, this.notice);
+    this.controls.append(this.reading, this.centered, this.transcript);
 
     this.panel.className = "trf-transcript";
     this.panel.setAttribute("aria-label", "Video transcript");
@@ -134,47 +150,28 @@ export class FocusView {
       this.toggleTranscript(false);
       this.transcript.focus();
     });
-    document.addEventListener("fullscreenchange", this.fullscreenChanged, {
+    document.addEventListener("fullscreenchange", this.syncReading, {
       signal: this.abort.signal,
     });
   }
 
-  private fullscreenChanged = (): void => {
-    const focused =
-      this.settings.focusMode && document.fullscreenElement === this.player;
-    this.player.classList.toggle("trf-focus-fullscreen", focused);
-    this.fullscreen.textContent = focused
-      ? "Exit fullscreen"
-      : "Fullscreen focus";
-    this.fullscreen.setAttribute("aria-pressed", String(focused));
+  private syncReading = (): void => {
+    const available =
+      this.settings.focusMode || document.fullscreenElement === this.player;
+    const active = available && !!this.settings.focusReading;
+    this.reading.hidden = !available;
+    this.reading.setAttribute(
+      "aria-pressed",
+      String(!!this.settings.focusReading),
+    );
+    this.centered.hidden = !active;
+    this.centered.setAttribute(
+      "aria-pressed",
+      String(!!this.settings.readingCentered),
+    );
+    this.player.classList.toggle("trf-focus-reading", active);
+    this.book.setActive(active && !this.hidden);
   };
-
-  private async enterFullscreen(): Promise<void> {
-    this.notice.textContent = "";
-    this.fullscreen.disabled = true;
-    try {
-      if (this.player.classList.contains("trf-focus-fullscreen")) {
-        await document.exitFullscreen();
-      } else {
-        this.options.onFocus(true);
-        if (document.fullscreenElement !== this.player)
-          await this.player.requestFullscreen();
-      }
-      if (this.destroyed) {
-        // A navigation can finish while the browser is entering fullscreen.
-        if (
-          document.fullscreenElement === this.player &&
-          !activeViews.has(this.player)
-        )
-          await document.exitFullscreen();
-      } else this.fullscreenChanged();
-    } catch {
-      if (this.destroyed) return;
-      this.notice.textContent = "Fullscreen is unavailable in this window.";
-    } finally {
-      if (!this.destroyed) this.fullscreen.disabled = false;
-    }
-  }
 
   private stopFollowing(): void {
     this.following = false;
@@ -230,7 +227,8 @@ export class FocusView {
   apply(settings: FocusSettings): void {
     const changedScript = settings.romanize !== this.settings.romanize;
     this.settings = settings;
-    this.fullscreenChanged();
+    this.syncReading();
+    this.book.apply(settings.romanize, !!settings.readingCentered);
     if (changedScript && this.built) {
       for (const [index, button] of this.buttons.entries())
         button.textContent = this.display(this.words[index].word.text);
@@ -238,6 +236,7 @@ export class FocusView {
   }
 
   update(timeMs: number): void {
+    this.book.update(timeMs);
     const next = wordAt(this.words, timeMs);
     if (next === this.current) return;
     this.mark(this.current, false);
@@ -270,6 +269,7 @@ export class FocusView {
     this.hidden = hidden;
     this.controls.hidden = hidden;
     this.panel.hidden = hidden || !this.open;
+    this.syncReading();
     if (!hidden && this.open && this.following) this.scrollToCurrent();
   }
 
@@ -277,15 +277,10 @@ export class FocusView {
     if (this.destroyed) return;
     this.destroyed = true;
     this.abort.abort();
-    if (activeViews.get(this.player) === this) {
-      activeViews.delete(this.player);
-      this.player.classList.remove(
-        "trf-focus-fullscreen",
-        "trf-transcript-open",
-      );
-    }
+    this.player.classList.remove("trf-transcript-open", "trf-focus-reading");
     this.controls.remove();
     this.panel.remove();
+    this.book.destroy();
   }
 }
 
