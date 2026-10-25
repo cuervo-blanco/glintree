@@ -29,7 +29,7 @@ function mount(patch: Partial<Settings> = {}) {
   player.getBoundingClientRect = () => rect(100, 50, 1000, 600);
   reader.getBoundingClientRect = () => {
     const width = settings.boxWidth * 10;
-    const height = settings.fontSize * 2 + 28;
+    const height = settings.fontSize * (settings.autoScale ? 2 : 1) * 2 + 28;
     return rect(
       100 + settings.horizontalPosition * 10 - width / 2,
       650 - settings.verticalPosition * 6 - height,
@@ -37,15 +37,8 @@ function mount(patch: Partial<Settings> = {}) {
       height,
     );
   };
-  const style = () =>
-    reader.style.setProperty(
-      "--trf-size",
-      `${settings.fontSize * (settings.autoScale ? 2 : 1)}px`,
-    );
-  style();
   const onChange = vi.fn((change: Partial<Settings>) => {
     settings = { ...settings, ...change };
-    style();
   });
   const onToggle = vi.fn();
   const interactions = new CaptionInteractions(reader, stage, {
@@ -69,8 +62,8 @@ function mount(patch: Partial<Settings> = {}) {
     onChange,
     onToggle,
     settings: () => settings,
-    width: reader.querySelector<HTMLButtonElement>(".trf-resize-width")!,
-    text: reader.querySelector<HTMLButtonElement>(".trf-resize-text")!,
+    corner: (value: string) =>
+      reader.querySelector<HTMLButtonElement>(`[data-corner="${value}"]`)!,
   };
 }
 
@@ -182,23 +175,48 @@ describe("caption interactions", () => {
     expect(reader.classList.contains("trf-dragging")).toBe(false);
   });
 
-  it("widens symmetrically and keeps an edge-positioned card on screen", () => {
-    const { width, settings, onToggle } = mount({ horizontalPosition: 20 });
-    pointer(width, "pointerdown", 500, 500);
-    pointer(width, "pointermove", 600, 500);
-    expect(settings()).toMatchObject({ boxWidth: 60, horizontalPosition: 30 });
-    pointer(width, "pointerup", 600, 500);
-    click(width);
-    expect(onToggle).not.toHaveBeenCalled();
-    key(width, "ArrowRight", true);
-    expect(settings()).toMatchObject({
-      boxWidth: 65,
-      horizontalPosition: 32.5,
-    });
-  });
+  it.each(["nw", "ne", "sw", "se"])(
+    "resizes from %s while keeping the opposite corner still",
+    (name) => {
+      const { reader, corner, settings, onToggle } = mount();
+      const before = reader.getBoundingClientRect();
+      const west = name.endsWith("w");
+      const north = name.startsWith("n");
+      const x = west ? before.left : before.right;
+      const y = north ? before.top : before.bottom;
+      const handle = corner(name);
+      pointer(handle, "pointerdown", x, y);
+      pointer(
+        handle,
+        "pointermove",
+        x + (west ? -80 : 80),
+        y + (north ? -20 : 20),
+      );
+      pointer(
+        handle,
+        "pointerup",
+        x + (west ? -80 : 80),
+        y + (north ? -20 : 20),
+      );
+      click(handle);
+      const after = reader.getBoundingClientRect();
+      expect(settings()).toMatchObject({ boxWidth: 48, fontSize: 43.2 });
+      expect(west ? after.right : after.left).toBeCloseTo(
+        west ? before.right : before.left,
+        0,
+      );
+      expect(north ? after.bottom : after.top).toBeCloseTo(
+        north ? before.bottom : before.top,
+        0,
+      );
+      expect(onToggle).not.toHaveBeenCalled();
+      expect(handle.textContent).toBe("");
+      expect(reader.querySelectorAll(".trf-resize-handle")).toHaveLength(4);
+    },
+  );
 
   it("keeps a narrowing caption on screen when its line wraps taller", () => {
-    const { reader, width, settings } = mount({ verticalPosition: 83.3 });
+    const { reader, corner, settings } = mount({ verticalPosition: 83.3 });
     const original = reader.getBoundingClientRect;
     reader.getBoundingClientRect = () => {
       const box = original();
@@ -210,8 +228,9 @@ describe("caption interactions", () => {
         height,
       );
     };
-    key(width, "ArrowLeft", true);
-    expect(settings()).toMatchObject({ boxWidth: 35, verticalPosition: 66.7 });
+    key(corner("ne"), "ArrowLeft", true);
+    expect(settings().boxWidth).toBeLessThan(40);
+    expect(settings().verticalPosition).toBe(66.7);
     expect(reader.getBoundingClientRect().top).toBeCloseTo(50, 0);
   });
 
@@ -224,41 +243,115 @@ describe("caption interactions", () => {
     pointer(stage, "pointercancel", 500, -9999);
   });
 
-  it("resizes text at the effective player scale without disabling autoscale", () => {
-    const { text, settings } = mount({ autoScale: true });
-    pointer(text, "pointerdown", 500, 500);
-    pointer(text, "pointermove", 520, 520);
-    pointer(text, "pointerup", 520, 520);
-    expect(settings()).toMatchObject({ fontSize: 46, autoScale: true });
+  it("scales the font and box together without disabling autoscale", () => {
+    const { corner, settings, reader } = mount({ autoScale: true });
+    const before = reader.getBoundingClientRect();
+    const handle = corner("se");
+    pointer(handle, "pointerdown", before.right, before.bottom);
+    pointer(
+      handle,
+      "pointerup",
+      before.right + before.width * 0.2,
+      before.bottom + before.height * 0.2,
+    );
+    expect(settings()).toMatchObject({
+      fontSize: 43.2,
+      boxWidth: 48,
+      autoScale: true,
+    });
   });
 
-  it("clamps text size and moves a growing card back inside the player", () => {
-    const { text, settings, reader } = mount({ verticalPosition: 83.3 });
-    pointer(text, "pointerdown", 500, 500);
-    pointer(text, "pointermove", 900, 900);
-    pointer(text, "pointerup", 900, 900);
-    expect(settings()).toMatchObject({ fontSize: 72, verticalPosition: 71.3 });
-    expect(reader.getBoundingClientRect().top).toBeGreaterThanOrEqual(50);
+  it("clamps the shared scale at the player edge and minimum caption width", () => {
+    const { corner, settings, reader } = mount();
+    const handle = corner("se");
+    pointer(handle, "pointerdown", 700, 530);
+    pointer(handle, "pointermove", 9999, 9999);
+    pointer(handle, "pointerup", 9999, 9999);
+    expect(settings()).toMatchObject({ fontSize: 63, boxWidth: 70 });
+    expect(reader.getBoundingClientRect().right).toBeLessThanOrEqual(1100);
+    const enlarged = reader.getBoundingClientRect();
+    pointer(handle, "pointerdown", enlarged.right, enlarged.bottom);
+    pointer(handle, "pointerup", -9999, -9999);
+    expect(settings().boxWidth).toBe(25);
+    expect(settings().fontSize).toBe(22.5);
   });
 
   it("supports opening, moving and resizing with the keyboard", () => {
-    const { player, stage, width, text, settings, onToggle } = mount();
+    const { player, stage, corner, settings, onToggle } = mount();
     const playback = vi.fn();
     player.addEventListener("keydown", playback);
     key(stage, "Enter");
     key(stage, " ");
     key(stage, "ArrowRight", true);
     key(stage, "ArrowUp");
-    key(width, "ArrowLeft");
-    key(text, "ArrowUp", true);
-    expect(settings()).toMatchObject({
-      horizontalPosition: 55,
-      verticalPosition: 21,
-      boxWidth: 39,
-      fontSize: 41,
-    });
+    const size = settings().fontSize;
+    key(corner("nw"), "ArrowLeft");
+    expect(settings().fontSize).toBe(size + 1);
+    key(corner("se"), "ArrowDown", true);
+    expect(settings().fontSize).toBe(size + 6);
+    expect(settings().boxWidth / 40).toBeCloseTo(settings().fontSize / size, 2);
     expect(onToggle).toHaveBeenCalledTimes(2);
     expect(playback).not.toHaveBeenCalled();
+  });
+
+  it("stops a corner gesture on Escape without changing its last edit", () => {
+    const { corner, settings, reader, onToggle } = mount();
+    const handle = corner("se");
+    pointer(handle, "pointerdown", 700, 530);
+    pointer(handle, "pointermove", 780, 550);
+    const edited = { ...settings() };
+    key(handle, "Escape");
+    pointer(handle, "pointermove", 900, 600);
+    click(handle);
+    expect(settings()).toEqual(edited);
+    expect(reader.classList.contains("trf-dragging")).toBe(false);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("keeps fullscreen focus centred while caption clicks still open settings", () => {
+    const { player, reader, stage, corner, onChange, onToggle } = mount();
+    player.classList.add("trf-focus-fullscreen");
+    pointer(stage, "pointerdown", 500, 500);
+    pointer(stage, "pointermove", 600, 440);
+    pointer(stage, "pointerup", 600, 440);
+    click(stage);
+    key(stage, "Enter");
+    key(stage, "ArrowRight");
+    for (const name of ["nw", "ne", "sw", "se"]) {
+      const handle = corner(name);
+      pointer(handle, "pointerdown", 500, 500);
+      pointer(handle, "pointermove", 600, 600);
+      pointer(handle, "pointerup", 600, 600);
+      key(handle, "ArrowRight");
+    }
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onToggle).toHaveBeenCalledTimes(2);
+    expect(reader.classList.contains("trf-dragging")).toBe(false);
+  });
+
+  it("ends an in-flight gesture when fullscreen focus begins", () => {
+    const { player, reader, corner, settings, onToggle } = mount();
+    const handle = corner("se");
+    pointer(handle, "pointerdown", 700, 530);
+    pointer(handle, "pointermove", 780, 550);
+    const edited = { ...settings() };
+    player.classList.add("trf-focus-fullscreen");
+    pointer(handle, "pointermove", 900, 600);
+    pointer(handle, "pointerup", 900, 600);
+    click(handle);
+    expect(settings()).toEqual(edited);
+    expect(reader.classList.contains("trf-dragging")).toBe(false);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("still allows direct editing in focus without fullscreen", () => {
+    const { stage, settings } = mount({ focusMode: true });
+    pointer(stage, "pointerdown", 500, 500);
+    pointer(stage, "pointerup", 600, 440);
+    expect(settings()).toMatchObject({
+      horizontalPosition: 60,
+      verticalPosition: 30,
+    });
   });
 
   it("does not toggle a second time on a double-click", () => {
