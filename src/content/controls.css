@@ -27,6 +27,49 @@
   scrollbar-color: #777 var(--bg);
 }
 
+.trf-reader .trf-control-heading {
+  display: none;
+}
+
+.trf-reader .trf-controls--sidebar .trf-control-panel {
+  height: var(--trf-panel-height);
+  border-radius: 0;
+}
+
+.trf-reader .trf-controls--sidebar .trf-control-heading {
+  position: sticky;
+  top: -8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  background: #171717;
+}
+
+.trf-reader .trf-control-heading button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.trf-reader .trf-controls--sidebar .trf-control-row {
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.trf-reader .trf-controls--sidebar .trf-control-row > span {
+  flex-basis: 100%;
+}
+
+.trf-reader .trf-controls--sidebar :is(input[type="range"], select) {
+  width: 100%;
+}
+
 .trf-reader .trf-control-row {
   display: flex;
   align-items: center;
@@ -89,7 +132,22 @@
   touch-action: none;
 }
 
+/* Keep the padding between the text and the grips in the same hover surface. */
+.trf-reader.trf-interactive:not(.trf-idle)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
 .trf-reader.trf-dragging .trf-stage {
+  cursor: grabbing;
+}
+
+.trf-reader.trf-dragging::before {
   cursor: grabbing;
 }
 
@@ -99,51 +157,57 @@
   outline-offset: 2px;
 }
 
-.trf-reader .trf-resize-handle {
+.trf-reader :is(.trf-resize-handle, .trf-size-handle) {
   position: absolute;
   z-index: 1;
-  width: 10px;
-  height: 10px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: 1px solid #ddd;
-  border-radius: 0;
-  background: #333;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font:
+    20px/24px system-ui,
+    sans-serif;
+  text-align: center;
   touch-action: none;
   opacity: 0;
   pointer-events: none;
 }
-/* A caption against the player edge must still have a complete grip to grab. */
-.trf-reader .trf-resize-handle[data-corner="nw"] {
-  left: 0;
-  top: 0;
-  cursor: nwse-resize;
+
+.trf-reader .trf-resize-handle {
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
 }
-.trf-reader .trf-resize-handle[data-corner="ne"] {
-  right: 0;
-  top: 0;
-  cursor: nesw-resize;
+
+.trf-reader .trf-resize-handle[data-side="left"] {
+  right: 100%;
 }
-.trf-reader .trf-resize-handle[data-corner="sw"] {
-  left: 0;
-  bottom: 0;
-  cursor: nesw-resize;
+.trf-reader .trf-resize-handle[data-side="right"] {
+  left: 100%;
 }
-.trf-reader .trf-resize-handle[data-corner="se"] {
-  right: 0;
-  bottom: 0;
-  cursor: nwse-resize;
+
+.trf-reader .trf-size-handle {
+  left: 50%;
+  top: var(--trf-handle-top, -24px);
+  transform: translateX(-50%);
+  cursor: ns-resize;
 }
-.trf-reader:not(.trf-idle):is(:hover, :has(:focus-visible), .trf-editing)
-  .trf-resize-handle {
+
+.trf-reader:not(.trf-idle):is(:hover, :has(:focus-visible), .trf-dragging)
+  :is(.trf-resize-handle, .trf-size-handle),
+.trf-focus-reading
+  .trf-reader:is(:hover, :has(:focus-visible), .trf-dragging)
+  .trf-size-handle {
   opacity: 1;
   pointer-events: auto;
 }
 
-.trf-focus-fullscreen .trf-reader .trf-resize-handle {
+.trf-focus-reading .trf-reader .trf-resize-handle {
   display: none;
 }
-
-.trf-focus-fullscreen .trf-reader .trf-stage {
+.trf-focus-reading .trf-reader::before {
   cursor: pointer;
 }
 
