@@ -6,8 +6,10 @@ Guidance for AI coding assistants working in this repository.
 
 A YouTube caption tool for language learning and faster reading. The player has
 an activation switch, editable captions, Focus mode and a timed transcript panel.
-The toolbar icon opens settings directly. There is no popup, profile gallery,
-Read Mode, AI assistant, library, notes, export system or provider API key.
+The toolbar icon opens settings directly. Reading mode adds book-like context
+inside Focus/fullscreen; the independent transcript sidebar stays available.
+There is no popup, profile gallery, old study dashboard, AI assistant, library,
+notes, export system or provider API key.
 
 YouTube supplies the transcript and timings up front. The current word is a
 lookup against `video.currentTime`. There is no transcription queue,
@@ -52,9 +54,22 @@ prerequisite for this fork.
 - Mount inside `#movie_player`. Never move, detach, hide or zero-size the video
   to build Focus mode. An opaque layer covers the picture while presented video
   frames continue driving the reader.
-- Fullscreen Focus centres the reader. Direct geometry gestures are disabled
-  there; clicking the caption still opens settings. Transcript word buttons
-  seek to original word starts and preserve pause state.
+- Focus and Reading mode use YouTube’s native fullscreen control. Leave the
+  bottom playback strip clear of both the book and transcript. Do not cover
+  native controls with the blackout. Transcript seeks preserve pause state.
+- One outward arrow on each side changes width only. The top-centre arrow changes text size;
+  caption height always follows the font/content, and old manual heights are
+  ignored. Reveal handles on hover or keyboard focus. Keep the caption padding
+  reachable so grips cannot disappear on approach. Reserve room outside the
+  caption for both handles, including at player edges.
+- Reading mode inherits the caption font/inks, retains a stable paragraph around
+  the current source word. Paragraph view follows wrapped lines; Centre word
+  shifts only the active line to keep the current word fixed on both axes.
+  Keep its view preference separate from the six caption modes. Do not hide the
+  whole overlay when replacing its stage: controls and the blackout must survive.
+  Dock appearance on the left while editing, reserve its width for the book,
+  and keep the independent transcript on the right. Use the same accent ink for
+  resize arrows and the current Reading word.
 - The transcript uses the full source words, including words filtered from the
   reader. Romanization changes display only, never source timings.
 - The on-player switch must stay available while disabled and without captions.
@@ -65,7 +80,7 @@ prerequisite for this fork.
 - Themes are text-colour starting points over one plain black caption background.
   Opacity is configurable. No rounded cards, shadows or decorative blur.
 - Saved presets contain appearance/reading settings. They do not change enabled,
-  language, romanization or focus preferences. Leave legacy stored records alone.
+  language, romanization, focus or book-view preferences. Leave legacy records alone.
 - Read palettes from computed `--text`, `--faded` and `--accent`; CSS remains the
   source of colour values. Editing a colour starts from the palette on screen.
 - Debounce storage writes during drags and flush before navigation or applying a
@@ -90,7 +105,7 @@ renderers. Document why a choice matters, not what the following line does.
 Every extension class is prefixed `trf-`. Scope caption rules beneath
 `.trf-reader`; player switches and fullscreen/transcript rules are explicitly
 scoped to their player/widget classes. The root remains pointer-transparent;
-only captions being edited, grips, panel controls and the player switch accept
+only captions, arrow handles, panel controls and the player switch accept
 input. Keep YouTube’s playback controls usable.
 
 The focal point stays fixed while reading. Use no competing animation beyond a
