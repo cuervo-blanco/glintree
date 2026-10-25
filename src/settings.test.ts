@@ -1,55 +1,64 @@
-import { describe, expect, it } from "vitest";
-import { DEFAULTS, downloadPath, loadSettings } from "./settings";
+import { afterEach, expect, it, vi } from "vitest";
+import { DEFAULTS, loadSettings, normalizeSettings } from "./settings";
 
-it("keeps the existing placement and video visible when new settings are absent", async () => {
-  const previous = (globalThis as unknown as { chrome?: unknown }).chrome;
-  (globalThis as unknown as { chrome: unknown }).chrome = {
+afterEach(() => vi.unstubAllGlobals());
+
+it("keeps existing appearance and defaults new placement and focus preferences", async () => {
+  vi.stubGlobal("chrome", {
     storage: { sync: { get: async () => ({ fontSize: 30 }) } },
-  };
-  try {
-    const settings = await loadSettings();
-    expect(settings.fontSize).toBe(30);
-    expect(settings.horizontalPosition).toBe(50);
-    expect(settings.verticalPosition).toBe(DEFAULTS.verticalPosition);
-    expect(settings.focusMode).toBe(false);
-  } finally {
-    (globalThis as unknown as { chrome?: unknown }).chrome = previous;
-  }
+  });
+  const settings = await loadSettings();
+  expect(settings.fontSize).toBe(30);
+  expect(settings.horizontalPosition).toBe(50);
+  expect(settings.verticalPosition).toBe(DEFAULTS.verticalPosition);
+  expect(settings.focusMode).toBe(false);
+  expect("readerInReadMode" in settings).toBe(false);
+  expect("customBackground" in settings).toBe(false);
 });
 
-describe("downloadPath", () => {
-  /*
-   * `chrome.downloads` rejects the whole download if the filename leaves the
-   * downloads directory, so an absolute path pasted into the folder box has to
-   * be reduced to something usable rather than failing at the call site with an
-   * opaque error.
-   */
-  it("keeps a plain subfolder", () => {
-    expect(downloadPath("Obsidian/Inbox", "a.md")).toBe("Obsidian/Inbox/a.md");
+it("falls back to defaults when extension storage is unavailable", async () => {
+  vi.stubGlobal("chrome", {
+    storage: {
+      sync: {
+        get: async () => {
+          throw new Error("unavailable");
+        },
+      },
+    },
   });
+  expect(await loadSettings()).toEqual(DEFAULTS);
+});
 
-  it("accepts Windows separators", () => {
-    expect(downloadPath(String.raw`Obsidian\Inbox`, "a.md")).toBe(
-      "Obsidian/Inbox/a.md",
-    );
+it("keeps supported preferences while discarding removed or malformed values", () => {
+  const stored = {
+    enabled: false,
+    focusMode: true,
+    language: "bn",
+    romanize: true,
+    font: "unknown font",
+    mode: "old reading mode",
+    theme: "old theme",
+    fontStyle: "bold",
+    textCase: "lower",
+    fontSize: "40",
+    letterSpacing: Infinity,
+    customText: "invalid colour",
+    customAccent: "#Aa7744",
+    readerInReadMode: false,
+    customBackground: "#ff0000",
+  };
+  expect(normalizeSettings(stored)).toEqual({
+    ...DEFAULTS,
+    enabled: false,
+    focusMode: true,
+    language: "bn",
+    romanize: true,
+    customAccent: "#Aa7744",
   });
+  expect(stored.customBackground).toBe("#ff0000");
+});
 
-  it("strips a drive letter and a leading slash", () => {
-    expect(downloadPath(String.raw`C:\Users\me\Vault`, "a.md")).toBe(
-      "Users/me/Vault/a.md",
-    );
-    expect(downloadPath("/var/tmp", "a.md")).toBe("var/tmp/a.md");
-  });
-
-  // The one that would otherwise let a path escape the downloads directory.
-  it("refuses to walk upwards", () => {
-    expect(downloadPath("../../etc", "a.md")).toBe("etc/a.md");
-    expect(downloadPath("..", "a.md")).toBe("a.md");
-  });
-
-  it("falls back to the bare filename", () => {
-    expect(downloadPath("", "a.md")).toBe("a.md");
-    expect(downloadPath("   ", "a.md")).toBe("a.md");
-    expect(downloadPath("///", "a.md")).toBe("a.md");
-  });
+it("uses defaults for malformed settings containers", () => {
+  for (const value of [null, undefined, [], 1, "settings"])
+    expect(normalizeSettings(value)).toEqual(DEFAULTS);
 });
