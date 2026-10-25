@@ -68,14 +68,16 @@ describe("reader controls", () => {
   it("skips invisible caption editing targets during a gap", () => {
     const { reader, controls } = mount();
     const targets = reader.querySelectorAll<HTMLElement>(
-      ".trf-stage, .trf-resize-width, .trf-resize-text",
+      ".trf-stage, .trf-resize-handle",
     );
     controls.setIdle(true);
     expect(Array.from(targets, (target) => target.tabIndex)).toEqual([
-      -1, -1, -1,
+      -1, -1, -1, -1, -1,
     ]);
     controls.setIdle(false);
-    expect(Array.from(targets, (target) => target.tabIndex)).toEqual([0, 0, 0]);
+    expect(Array.from(targets, (target) => target.tabIndex)).toEqual([
+      0, 0, 0, 0, 0,
+    ]);
   });
   it("opens and closes settings by clicking the captions without a separate button", () => {
     const { reader, stage, dialog } = mount();
@@ -132,12 +134,7 @@ describe("reader controls", () => {
       "focusMode",
     ] as const)
       expect(input(key)).toBeInstanceOf(HTMLElement);
-    expect(
-      reader.querySelector('[aria-label="Resize caption width"]'),
-    ).not.toBeNull();
-    expect(
-      reader.querySelector('[aria-label="Resize caption text"]'),
-    ).not.toBeNull();
+    expect(reader.querySelectorAll(".trf-resize-handle")).toHaveLength(4);
   });
 
   it("previews gesture and range edits immediately, then coalesces their saved values", () => {
@@ -237,7 +234,6 @@ describe("reader controls", () => {
   it("starts an edited custom colour from the palette currently on screen", () => {
     const { reader, input, onChange, controls } = mount(false, {
       theme: "slate",
-      customBackground: "#111111",
       customText: "#222222",
       customFaded: "#333333",
       customAccent: "#444444",
@@ -247,12 +243,12 @@ describe("reader controls", () => {
     reader.style.setProperty("--faded", "#7f858a");
     reader.style.setProperty("--accent", "#c97958");
     controls.apply({ ...DEFAULTS, theme: "slate" });
-    expect(input("customBackground").value).toBe("#303438");
+    expect(reader.querySelector('[data-field="customBackground"]')).toBeNull();
+    expect(input("customText").value).toBe("#e4e1dc");
     input("customAccent").value = "#aa7744";
     input("customAccent").dispatchEvent(new Event("input"));
     expect(onChange).toHaveBeenCalledExactlyOnceWith({
       theme: "custom",
-      customBackground: "#303438",
       customText: "#e4e1dc",
       customFaded: "#7f858a",
       customAccent: "#aa7744",
