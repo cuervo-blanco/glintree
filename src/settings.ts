@@ -89,6 +89,8 @@ export interface Settings {
   autoScale: boolean;
   /** Distance from the bottom of the player, as a percentage of its height. */
   verticalPosition: number;
+  /** Caption centre, as a percentage of the player's width. */
+  horizontalPosition: number;
   /** Reader width, as a percentage of the player's width. */
   boxWidth: number;
   /** Already-read words kept visible to the left of the pivot. */
@@ -165,6 +167,8 @@ export interface Settings {
   /** Preferred caption language, as a BCP-47 prefix. */
   language: string;
   romanize: boolean;
+  /** Cover the video while keeping playback and captions running. */
+  focusMode: boolean;
 }
 
 /**
@@ -183,6 +187,7 @@ export const DEFAULTS: Settings = {
   letterSpacing: 0,
   autoScale: true,
   verticalPosition: 8,
+  horizontalPosition: 50,
   boxWidth: 58,
   contextBefore: 3,
   contextAfter: 3,
@@ -209,6 +214,7 @@ export const DEFAULTS: Settings = {
   readerInReadMode: true,
   language: "en",
   romanize: false,
+  focusMode: false,
 };
 
 export async function loadSettings(): Promise<Settings> {
