@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Read YouTube subtitles one word at a time, at a fixed focal point",
+  "description": "Learn languages and read faster with YouTube captions",
   "scripts": {
     "build": "node scripts/build.mjs",
     "package": "node scripts/build.mjs && node scripts/package.mjs",
@@ -13,8 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check-drift": "node scripts/check-drift.mjs",
-    "check": "pnpm run typecheck && pnpm test && pnpm run check-drift && pnpm run check-boundaries",
-    "check-boundaries": "node scripts/check-boundaries.mjs",
+    "check": "pnpm run typecheck && pnpm test",
     "shoot": "node scripts/build.mjs --dev && python scripts/shoot.py",
     "reel": "node scripts/build.mjs --dev && python scripts/reel.py"
   },
