@@ -52,9 +52,3 @@
   outline: 2px solid #eee;
   outline-offset: -2px;
 }
-
-#movie_player.trf-focus-fullscreen.ytp-autohide
-  .trf-player-toggle--floating:not(:focus-visible) {
-  opacity: 0;
-  pointer-events: none;
-}
