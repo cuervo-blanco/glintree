@@ -18,25 +18,18 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outdir = resolve(root, "dist");
 const watch = process.argv.includes("--watch");
-// The screenshot harness renders the Read Mode view from a fixture, with no
-// YouTube page involved. Never listed in the manifest — `--dev` keeps it out of
-// a shipping build entirely.
+// Visual fixtures stay out of the extension users install.
 const dev = watch || process.argv.includes("--dev");
 
 const entries = {
   content: "src/content/index.ts",
   inject: "src/page/inject.ts",
   options: "src/options/options.ts",
-  popup: "src/popup/popup.ts",
   background: "src/background/index.ts",
-  library: "src/library/library.ts",
-  keysetup: "src/keysetup/keysetup.ts",
   ...(dev
     ? {
-        harness: "src/dev/harness.ts",
         modes: "src/dev/modes.ts",
         reel: "src/dev/reel.ts",
-        cards: "src/dev/cards.ts",
       }
     : {}),
 };
@@ -44,13 +37,10 @@ const entries = {
 /** The font stylesheet ships as-is, but its `url()`s must resolve against the
  *  extension root rather than a web origin. */
 async function buildCss() {
-  const reader = await readFile(
-    resolve(root, "src/content/reader.css"),
-    "utf8",
-  );
-  const controls = await readFile(
-    resolve(root, "src/content/controls.css"),
-    "utf8",
+  const styles = await Promise.all(
+    ["reader", "controls", "player", "focus"].map((name) =>
+      readFile(resolve(root, `src/content/${name}.css`), "utf8"),
+    ),
   );
   const fonts = await readFile(
     resolve(root, "src/reader-core/fonts.css"),
@@ -62,25 +52,13 @@ async function buildCss() {
   const scoped = fonts.replace(/url\("\/fonts\//g, 'url("fonts/');
   await writeFile(
     resolve(outdir, "reader.css"),
-    `${scoped}\n\n${reader}\n\n${controls}`,
-    "utf8",
-  );
-
-  // Read Mode ships as its own content-script stylesheet, and carries the same
-  // font faces. `url("fonts/...")` only resolves from a document at the dist
-  // root, which is also why the harness is emitted there rather than a subdir.
-  const readmode = await readFile(
-    resolve(root, "src/readmode/readmode.css"),
-    "utf8",
-  );
-  await writeFile(
-    resolve(outdir, "readmode.css"),
-    `${scoped}\n\n${readmode}`,
+    [scoped, ...styles].join("\n\n"),
     "utf8",
   );
 }
 
 async function copyStatic() {
+  await cp(resolve(root, "LICENSE"), resolve(outdir, "LICENSE"));
   await cp(
     resolve(root, "src/manifest.json"),
     resolve(outdir, "manifest.json"),
@@ -95,26 +73,10 @@ async function copyStatic() {
     resolve(root, "src/options/options.html"),
     resolve(outdir, "options.html"),
   );
-  await cp(
-    resolve(root, "src/popup/popup.html"),
-    resolve(outdir, "popup.html"),
-  );
-  await cp(
-    resolve(root, "src/library/library.html"),
-    resolve(outdir, "library.html"),
-  );
-  await cp(
-    resolve(root, "src/keysetup/keysetup.html"),
-    resolve(outdir, "keysetup.html"),
-  );
   if (dev) {
     // Emitted at the dist root on purpose: `buildCss` rewrites font urls to be
     // relative, so a harness one directory deeper would render in a fallback
     // face and every screenshot diff would be chasing that instead of the design.
-    await cp(
-      resolve(root, "src/dev/harness.html"),
-      resolve(outdir, "harness.html"),
-    );
     // The reader's own harness: every reading mode over a stand-in player.
     await cp(
       resolve(root, "src/dev/modes.html"),
@@ -122,14 +84,6 @@ async function copyStatic() {
     );
     // The steppable one, which scripts/reel.py records into the README's GIFs.
     await cp(resolve(root, "src/dev/reel.html"), resolve(outdir, "reel.html"));
-    // The store listing cards, rendered by scripts/store-cards.py.
-    await cp(
-      resolve(root, "src/dev/cards.html"),
-      resolve(outdir, "cards.html"),
-    );
-    await cp(resolve(root, "src/dev/fixtures"), resolve(outdir, "fixtures"), {
-      recursive: true,
-    });
   }
   await buildCss();
 }
