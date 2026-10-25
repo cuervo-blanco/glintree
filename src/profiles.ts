@@ -17,13 +17,13 @@ import { DEFAULTS, saveSettings, type Settings } from "./settings";
 /**
  * The slice of `Settings` a profile carries.
  *
- * `enabled`, `language` and `romanize` belong to the user. Switching a reading
- * style must not change whether the reader runs or which language and script
+ * `enabled`, `language`, `romanize` and `focusMode` belong to the user. Switching
+ * a reading style must not change playback visibility or the language and script
  * the user reads.
  */
 export type ProfileSettings = Omit<
   Settings,
-  "enabled" | "language" | "romanize"
+  "enabled" | "language" | "romanize" | "focusMode"
 >;
 
 /**
@@ -42,6 +42,7 @@ const PROFILE_FIELDS: Record<keyof ProfileSettings, true> = {
   letterSpacing: true,
   autoScale: true,
   verticalPosition: true,
+  horizontalPosition: true,
   boxWidth: true,
   contextBefore: true,
   contextAfter: true,
@@ -162,6 +163,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: 0,
       autoScale: true,
       verticalPosition: 9,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 38,
       contextBefore: 0,
       contextAfter: 5,
@@ -189,6 +191,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: 0,
       autoScale: true,
       verticalPosition: 10,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 55,
       contextBefore: 5,
       contextAfter: 5,
@@ -230,6 +233,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: 0,
       autoScale: true,
       verticalPosition: 10,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 62,
       // Not read while static, but kept sensible so switching this profile to
       // dynamic lands on Serif Flow rather than on an empty window.
@@ -269,6 +273,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: 0.25,
       autoScale: true,
       verticalPosition: 11,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 55,
       contextBefore: 0,
       contextAfter: 5,
@@ -305,6 +310,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: 0.25,
       autoScale: true,
       verticalPosition: 9,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 50,
       contextBefore: 4,
       contextAfter: 4,
@@ -340,6 +346,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: 0,
       autoScale: true,
       verticalPosition: 10,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 56,
       contextBefore: 3,
       contextAfter: 4,
@@ -374,6 +381,7 @@ export const BUILT_IN_PROFILES: readonly Profile[] = [
       letterSpacing: -0.75,
       autoScale: true,
       verticalPosition: 6,
+      horizontalPosition: DEFAULTS.horizontalPosition,
       boxWidth: 46,
       contextBefore: 3,
       contextAfter: 4,
@@ -442,7 +450,8 @@ export async function loadProfiles(): Promise<ProfileState> {
       name: entry.name,
       blurb: CUSTOM_BLURB,
       builtIn: false,
-      settings: entry.settings,
+      // Profiles saved before a new setting existed inherit its default.
+      settings: only({ ...DEFAULTS, ...entry.settings }),
     })),
   ];
 
