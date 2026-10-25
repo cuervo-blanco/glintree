@@ -183,8 +183,16 @@
 }
 
 .trf-reader .trf-book-current {
+  color: var(--text);
+  font-weight: var(--trf-weight, 600);
+}
+
+.trf-reader .trf-book-word .trf-pivot {
+  color: inherit;
+}
+
+.trf-reader .trf-book-current .trf-pivot {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .trf-reader .trf-book:focus-visible {
