@@ -60,7 +60,7 @@ export const FIELDS: Field[] = [
     kind: "select",
     key: "mode",
     group: "reading",
-    label: "Reading mode",
+    label: "Caption mode",
     help: "RSVP pins one word to a fixed focal point. The rest show a line and mark where the speaker is in it.",
     // Derived from the union rather than listed, so a mode added to `Settings`
     // and forgotten here fails to build instead of never reaching the picker.
@@ -86,6 +86,20 @@ export const FIELDS: Field[] = [
     group: "reading",
     label: "Focus mode",
     help: "Hide the video behind the captions while audio continues.",
+  },
+  {
+    kind: "toggle",
+    key: "focusReading",
+    group: "reading",
+    label: "Reading mode",
+    help: "Show a paragraph around the current word in Focus or fullscreen.",
+  },
+  {
+    kind: "toggle",
+    key: "readingCentered",
+    group: "reading",
+    label: "Centre word in Reading mode",
+    help: "Hold the current word in the middle while keeping surrounding lines visible.",
   },
   {
     kind: "range",
@@ -142,7 +156,7 @@ export const FIELDS: Field[] = [
     key: "customAccent",
     group: "appearance",
     label: "Accent colour",
-    help: "The pivot letter, the focal marks, and the highlighter block.",
+    help: "The focal letter, Reading mode's current word, resize arrows and highlighter.",
   },
   {
     kind: "select",
