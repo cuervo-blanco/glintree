@@ -35,10 +35,20 @@ export class ReaderControls {
     this.root.setAttribute("role", "dialog");
     this.root.setAttribute("aria-label", "Caption appearance");
     this.panel.className = "trf-control-panel";
+    const heading = document.createElement("div");
+    heading.className = "trf-control-heading";
+    const title = document.createElement("strong");
+    title.textContent = "Appearance";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Close appearance");
+    close.addEventListener("click", this.close);
+    heading.append(title, close);
+    this.panel.append(heading);
     const direct = [
       "horizontalPosition",
       "verticalPosition",
-      "fontSize",
       "boxWidth",
       "autoScale",
     ];
@@ -74,7 +84,7 @@ export class ReaderControls {
     this.pace.textContent = "— WPM";
     this.focus.type = "button";
     this.focus.addEventListener("click", () =>
-      this.change({ focusMode: !this.settings.focusMode }),
+      this.change({ focusMode: !this.isFocused() }),
     );
     this.status.append(this.pace, this.focus);
 
@@ -99,15 +109,15 @@ export class ReaderControls {
     this.root.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      this.toggle(false);
-      this.stage.focus();
+      this.close();
     });
-    this.stage.addEventListener("keydown", (event) => {
+    this.reader.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
       if (!this.root.hidden) this.toggle(false);
       else if (this.settings.focusMode) this.change({ focusMode: false });
     });
     document.addEventListener("pointerdown", this.outside);
+    document.addEventListener("fullscreenchange", this.syncFocus);
     this.apply(settings);
   }
 
@@ -125,12 +135,25 @@ export class ReaderControls {
     this.root.hidden = !open;
     this.reader.classList.toggle("trf-editing", open);
     this.stage.setAttribute("aria-expanded", String(open));
+    this.reader
+      .querySelector(".trf-book")
+      ?.setAttribute("aria-expanded", String(open));
     if (!open) this.anchor = null;
     this.apply(this.settings);
     this.layout();
   }
 
+  private close = (): void => {
+    this.toggle(false);
+    (
+      this.reader.querySelector<HTMLElement>(".trf-book:not([hidden])") ??
+      this.stage
+    ).focus();
+  };
+
   private change(patch: Partial<Settings>): void {
+    if (patch.focusMode === false && this.settings.focusReading)
+      patch = { ...patch, focusReading: false };
     this.pending = { ...this.pending, ...patch };
     this.settings = { ...this.settings, ...patch };
     this.options.onChange(patch);
@@ -155,7 +178,7 @@ export class ReaderControls {
   setHidden(hidden: boolean): void {
     this.suppressed = hidden;
     this.status.hidden = hidden;
-    this.backdrop.hidden = hidden || !this.settings.focusMode;
+    this.syncFocus();
   }
 
   setSpeed(wpm: number | null, paused: boolean): void {
@@ -173,7 +196,7 @@ export class ReaderControls {
 
   setIdle(idle: boolean): void {
     for (const target of this.reader.querySelectorAll<HTMLElement>(
-      ".trf-stage, .trf-resize-handle",
+      ".trf-stage, .trf-resize-handle, .trf-size-handle",
     )) {
       target.tabIndex = idle ? -1 : 0;
       target.setAttribute("aria-disabled", String(idle));
@@ -191,6 +214,8 @@ export class ReaderControls {
     const input = document.createElement(
       field.kind === "select" ? "select" : "input",
     );
+    input.id = `trf-caption-${field.key}`;
+    row.htmlFor = input.id;
     if (input instanceof HTMLSelectElement && field.kind === "select") {
       for (const option of field.options)
         input.add(new Option(option.label, option.value));
@@ -236,15 +261,32 @@ export class ReaderControls {
     );
   }
 
-  apply(settings: Settings): void {
-    this.settings = settings;
-    this.backdrop.hidden = this.suppressed || !settings.focusMode;
-    this.focus.textContent = settings.focusMode ? "Show video" : "Focus";
+  private isFocused(): boolean {
+    return (
+      this.settings.focusMode ||
+      (this.settings.focusReading &&
+        !!document.fullscreenElement &&
+        document.fullscreenElement === this.reader.parentElement)
+    );
+  }
+
+  private syncFocus = (): void => {
+    const focused = this.isFocused();
+    this.backdrop.hidden = this.suppressed || !focused;
+    this.focus.textContent = focused ? "Show video" : "Focus";
     this.focus.setAttribute(
       "aria-label",
-      settings.focusMode ? "Show video" : "Hide video for focused reading",
+      focused ? "Show video" : "Hide video for focused reading",
     );
-    this.focus.setAttribute("aria-pressed", String(settings.focusMode));
+    this.focus.setAttribute("aria-pressed", String(focused));
+    for (const [field, input] of this.inputs) {
+      if (field.key === "focusMode" && input instanceof HTMLInputElement)
+        input.checked = focused;
+    }
+  };
+
+  apply(settings: Settings): void {
+    this.settings = settings;
     const palette = this.palette();
     for (const [field, input] of this.inputs) {
       const value =
@@ -261,6 +303,7 @@ export class ReaderControls {
             ? field.format(Number(value))
             : String(value);
     }
+    this.syncFocus();
   }
 
   layout(): void {
@@ -269,10 +312,30 @@ export class ReaderControls {
     const bounds = player.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
     this.reader.style.bottom = `clamp(0px, ${this.settings.verticalPosition}%, ${Math.max(0, player.clientHeight - this.reader.offsetHeight)}px)`;
+    const card = this.reader.getBoundingClientRect();
+    this.reader.style.setProperty(
+      "--trf-handle-top",
+      `${Math.max(-24, bounds.top - card.top)}px`,
+    );
+    const sidebar = player.classList.contains("trf-focus-reading");
+    this.root.classList.toggle("trf-controls--sidebar", sidebar);
     if (this.root.hidden) return;
+    if (sidebar) {
+      // Dock to the player, even though the controls inherit the reader's palette.
+      this.root.style.left = `${bounds.left - card.left}px`;
+      this.root.style.top = `${bounds.top - card.top}px`;
+      this.root.style.setProperty(
+        "--trf-panel-width",
+        `${Math.min(320, bounds.width * 0.4)}px`,
+      );
+      this.root.style.setProperty(
+        "--trf-panel-height",
+        `${Math.max(0, bounds.height - 80)}px`,
+      );
+      return;
+    }
     const clamp = (value: number, min: number, max: number): number =>
       Math.max(min, Math.min(max, value));
-    const card = this.reader.getBoundingClientRect();
     const above = card.top - bounds.top - 20;
     const below = bounds.bottom - card.bottom - 20;
     const width = Math.min(340, Math.max(0, bounds.width - 24));
@@ -317,6 +380,7 @@ export class ReaderControls {
     // Navigation or closing the tab mid-drag must keep the final edit.
     this.flush();
     document.removeEventListener("pointerdown", this.outside);
+    document.removeEventListener("fullscreenchange", this.syncFocus);
     this.resize?.disconnect();
     this.interactions.destroy();
     this.backdrop.remove();
