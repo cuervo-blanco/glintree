@@ -80,9 +80,26 @@ describe("saved presets", () => {
   });
 
   it("preserves the user's enabled, language, script and focus choices", async () => {
-    sync = { enabled: false, language: "bn", romanize: true, focusMode: true };
-    const preset = await savePreset("Reading", { ...DEFAULTS, fontSize: 36 });
-    for (const key of ["enabled", "language", "romanize", "focusMode"])
+    sync = {
+      enabled: false,
+      language: "bn",
+      romanize: true,
+      focusMode: true,
+      focusReading: true,
+      readingCentered: true,
+    };
+    const preset = await savePreset("Reading", {
+      ...DEFAULTS,
+      fontSize: 36,
+    });
+    for (const key of [
+      "enabled",
+      "language",
+      "romanize",
+      "focusMode",
+      "focusReading",
+      "readingCentered",
+    ])
       expect(preset.settings).not.toHaveProperty(key);
     await applyPreset(preset);
     expect(await loadSettings()).toMatchObject({
@@ -90,6 +107,8 @@ describe("saved presets", () => {
       language: "bn",
       romanize: true,
       focusMode: true,
+      focusReading: true,
+      readingCentered: true,
       fontSize: 36,
     });
   });
@@ -105,6 +124,9 @@ describe("saved presets", () => {
     const [preset] = await loadPresets();
     expect(preset.settings.fontSize).toBe(30);
     expect(preset.settings.horizontalPosition).toBe(50);
+    expect(preset.settings).not.toHaveProperty("boxHeight");
+    expect(preset.settings).not.toHaveProperty("readingCentered");
+    expect(preset.settings).not.toHaveProperty("focusReading");
     expect(preset.settings).not.toHaveProperty("customBackground");
     expect(preset.settings).not.toHaveProperty("enabled");
   });
@@ -147,6 +169,8 @@ describe("saved presets", () => {
           language: "hi",
           romanize: true,
           focusMode: true,
+          focusReading: true,
+          readingCentered: true,
         },
       },
     ];
