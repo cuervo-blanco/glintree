@@ -357,10 +357,16 @@ auto-transcript cannot run off the card. See
 
 ## Settings
 
-Move the pointer over the video and open **Appearance** just above the reader.
-Change its mode, colours, font, size and position while watching; edits also
-take effect while paused. **Romanized script** appears when the transcript
-contains Hindi or Bengali. Press Escape to close the panel.
+Click the captions to open or close their settings. Drag them to move them;
+the right-edge grip changes the card width, and the corner grip changes text
+size. The panel keeps the font, colours and reading mode together, with
+**Romanized script** when the transcript contains Hindi or Bengali. Edits also
+work while paused. Escape or a click outside closes the panel.
+
+The small corner indicator estimates the current words per minute from nearby
+caption timings and the playback speed. **Focus** covers the picture while the
+video and audio continue; **Show video** brings it back. YouTube's playback
+controls stay available.
 
 Click the toolbar icon → **All settings…**, or find Options on
 `chrome://extensions`. There is a live preview running the real overlay, so
