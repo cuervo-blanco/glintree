@@ -54,11 +54,15 @@ Turn on **Reading mode** in Focus or fullscreen to read a flowing paragraph
 instead of the short caption. Surrounding lines stay visible at the caption’s
 text size, and only the word being spoken is emphasised. The text follows the
 current line rather than moving on every word. Turn on **Centre word** to hold
-the spoken word in the middle while its line moves past the focal point. Turn it
+the highlighted focal letter in the middle while its line moves past it. The
+current word uses the regular reader's text weight and one accent-coloured
+letter. Excerpt refreshes retain existing line breaks; a 60ms context fade
+softens line changes without moving or fading the focal word. Reduced-motion
+preferences disable the fade. Turn Centre word
 off to return to the stable paragraph view. Reading mode and the sidebar leave
 a clear strip for playback controls and seeking. Click the text to open
 appearance settings in a left side panel; the transcript stays available on the
-right. The arrows and Reading mode’s focused word share the accent colour
+right. The arrows and Reading mode’s focal letter share the accent colour
 (orange by default). Turn Reading mode off to return
 to the selected caption mode. **Show video** leaves both Focus and Reading mode.
 
@@ -100,6 +104,7 @@ extension. Refresh an already-open YouTube tab after reloading the extension.
 
 Chrome is the tested browser. Other Chromium browsers can load the same package,
 but should be tested before being declared supported.
+For a manual handoff, see [the Opera GX installation guide](docs/OPERA-GX.md).
 
 ## Development
 
