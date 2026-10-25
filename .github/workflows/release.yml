@@ -3,11 +3,11 @@ name: release
 # Build a Chrome-Web-Store-ready zip on a version tag and attach it to a draft
 # release, so shipping an update is one tag rather than a manual build.
 #
-#   git tag v0.1.1 && git push origin v0.1.1
+# Tag a version and push it to the remote used to publish this fork.
 #
 # The draft is deliberate: nothing goes live until you review it and press
 # publish. Uploading to the store itself is a separate, human-reviewed step —
-# see PUBLISHING.md.
+# see the packaging instructions in README.md.
 
 on:
   push:
@@ -48,21 +48,7 @@ jobs:
             exit 1
           fi
 
-      # Deliberately NOT `pnpm run check`.
-      #
-      # That script includes `check-drift`, which compares `src/reader-core/`
-      # against a checkout of the desktop app. There is no such checkout on a
-      # runner, and the script exits 2 rather than pretending otherwise — so
-      # running it here would fail every release for a reason that has nothing
-      # to do with the release. Drift is a two-repository concern and belongs to
-      # the machine that has both; run `pnpm run check` locally before tagging.
-      #
-      # The boundary check does belong here: the package built below is exactly
-      # what users install, so it is the last chance to catch the API key
-      # reaching a content script.
-      - run: pnpm run typecheck
-      - run: pnpm test
-      - run: pnpm run check-boundaries
+      - run: pnpm run check
 
       - run: pnpm run build
 
