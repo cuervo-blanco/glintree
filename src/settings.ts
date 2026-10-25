@@ -1,11 +1,10 @@
 /**
  * Extension settings, stored in `chrome.storage.sync`.
  *
- * Defaults deliberately match the desktop app's, so the two feel like one
- * product rather than two things that happen to share a name.
+ * Preferences shared by the YouTube reader and its settings page.
  */
 
-import type { ReaderFont } from "./reader-core/fonts";
+import { FONT_LABELS, type ReaderFont } from "./reader-core/fonts";
 
 export type ReaderTheme =
   | "focus"
@@ -65,16 +64,16 @@ export const MOTION_LABELS: Record<Motion, string> = {
 };
 
 export const THEME_LABELS: Record<ReaderTheme, string> = {
-  focus: "Focus (dark)",
-  paper: "Paper (light)",
+  focus: "Focus",
+  paper: "Paper",
   sepia: "Sepia",
   contrast: "High contrast",
-  slate: "Slate (neutral grey)",
-  mist: "Mist (neutral light)",
-  nocturne: "Nocturne (deep blue-grey)",
-  lyric: "Lyric (gold on a blue band)",
-  caption: "Caption (white on solid black)",
-  custom: "Custom (your own colours)",
+  slate: "Slate",
+  mist: "Mist",
+  nocturne: "Nocturne",
+  lyric: "Lyric",
+  caption: "Caption",
+  custom: "Custom",
 };
 
 export interface Settings {
@@ -107,15 +106,7 @@ export interface Settings {
   bionicAccent: boolean;
   /** How opaque the card behind the words is, 0-1. */
   backgroundOpacity: number;
-  /**
-   * The Custom theme's palette, as hex.
-   *
-   * Four flat strings rather than one object: `isModified` in `profiles.ts`
-   * compares profile values with `!==`, so a nested object would never equal
-   * itself and every profile would read as modified the moment it was applied.
-   * Ignored unless `theme` is `"custom"`.
-   */
-  customBackground: string;
+  /** Text colours used by the Custom theme. The background stays black. */
   customText: string;
   customFaded: string;
   customAccent: string;
@@ -161,9 +152,6 @@ export interface Settings {
   /** Hide YouTube's own captions while the reader is running. Leaving both on
    *  means reading the same words twice, in two places. */
   hideNativeCaptions: boolean;
-  /** Keep the RSVP reader running over the video inside Read Mode. On by
-   *  default: Read Mode changes the page around the video, not the video. */
-  readerInReadMode: boolean;
   /** Preferred caption language, as a BCP-47 prefix. */
   language: string;
   romanize: boolean;
@@ -172,7 +160,7 @@ export interface Settings {
 }
 
 /**
- * What a fresh install starts with — and, via `profiles.ts`, the Default profile.
+ * What a fresh install starts with.
  *
  * Existing installs are unaffected by changes here: `loadSettings` asks storage
  * for these keys and gets back whatever was stored, so a default only reaches
@@ -196,9 +184,7 @@ export const DEFAULTS: Settings = {
   // Matches what `reader.css` used to hardcode, so nothing moves for anyone
   // already using the extension.
   backgroundOpacity: 0.88,
-  // The Focus palette, so opening the pickers starts from what is on screen
-  // rather than from an arbitrary colour.
-  customBackground: "#16181b",
+  // Custom starts from the default text colours.
   customText: "#e8e6e3",
   customFaded: "#6e7278",
   customAccent: "#e4572e",
@@ -211,16 +197,44 @@ export const DEFAULTS: Settings = {
   showPivotGuides: true,
   removeFillers: true,
   hideNativeCaptions: true,
-  readerInReadMode: true,
   language: "en",
   romanize: false,
   focusMode: false,
 };
 
+/** Saved settings can outlive fields and enum values removed by an update. */
+export function normalizeSettings(value: unknown): Settings {
+  const stored =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const choices: Partial<Record<keyof Settings, readonly string[]>> = {
+    mode: Object.keys(MODE_LABELS),
+    theme: Object.keys(THEME_LABELS),
+    font: Object.keys(FONT_LABELS),
+    motion: Object.keys(MOTION_LABELS),
+    fontStyle: ["normal", "italic"],
+    textCase: ["none", "upper"],
+  };
+  return Object.fromEntries(
+    Object.entries(DEFAULTS).map(([key, fallback]) => {
+      const candidate = stored[key];
+      const allowed = choices[key as keyof Settings];
+      const valid =
+        typeof candidate === typeof fallback &&
+        (typeof candidate !== "number" || Number.isFinite(candidate)) &&
+        (!allowed || allowed.includes(String(candidate))) &&
+        (!key.startsWith("custom") ||
+          /^#[0-9a-f]{6}$/i.test(String(candidate)));
+      return [key, valid ? candidate : fallback];
+    }),
+  ) as unknown as Settings;
+}
+
 export async function loadSettings(): Promise<Settings> {
   try {
     const stored = await chrome.storage.sync.get(DEFAULTS);
-    return { ...DEFAULTS, ...stored } as Settings;
+    return normalizeSettings(stored);
   } catch {
     // Storage can be unavailable in a torn-down context during navigation.
     return { ...DEFAULTS };
@@ -240,129 +254,6 @@ export function onSettingsChanged(
   ): void => {
     if (area !== "sync") return;
     void loadSettings().then(handler);
-  };
-  chrome.storage.onChanged.addListener(listener);
-  return () => chrome.storage.onChanged.removeListener(listener);
-}
-
-/* ── device preferences ─────────────────────────────────────────────────── */
-
-/**
- * Settings that belong to this browser rather than to a reading style.
- *
- * Kept in `chrome.storage.local` and deliberately outside `Settings`: a profile
- * switch must not turn stats tracking off or start opening read mode by itself,
- * and neither belongs in the 120-writes-a-minute sync budget.
- */
-export interface DevicePrefs {
-  /** Record watch time, coverage and rewatch counts. */
-  statsTracking: boolean;
-  /** Enter read mode automatically when a video page loads. */
-  autoReadMode: boolean;
-  /** Append the whole transcript to an exported file. */
-  exportTranscript: boolean;
-  /**
-   * Where exports land, as a folder path *relative to Downloads*.
-   *
-   * Chrome will not let an extension write to an arbitrary absolute path — a
-   * `filename` that escapes the downloads directory is rejected outright. A
-   * subfolder is what can be automated; anywhere else needs the save dialog.
-   */
-  exportFolder: string;
-  /**
-   * Open the save dialog every time, so any folder on disk can be chosen.
-   *
-   * The default, and the only route to a folder outside Downloads. When this is
-   * on, `exportFolder` does not apply — the dialog decides.
-   */
-  exportAskWhere: boolean;
-}
-
-export const DEVICE_DEFAULTS: DevicePrefs = {
-  statsTracking: true,
-  autoReadMode: false,
-  // Off: a transcript is by far the largest thing in the file and would bury
-  // the notes people mostly open it to reread.
-  exportTranscript: false,
-  exportFolder: "",
-  // On by default: it is the only option that can reach a folder outside
-  // Downloads, which is where a notes vault usually lives. Chrome remembers the
-  // last folder chosen, so after the first export it is one keypress.
-  exportAskWhere: true,
-};
-
-const DEVICE_KEYS = {
-  statsTracking: "prefs.statsTracking",
-  autoReadMode: "prefs.autoReadMode",
-  exportTranscript: "prefs.exportTranscript",
-  exportFolder: "prefs.exportFolder",
-  exportAskWhere: "prefs.exportAskWhere",
-} as const;
-
-export async function loadDevicePrefs(): Promise<DevicePrefs> {
-  try {
-    const stored = await chrome.storage.local.get({
-      [DEVICE_KEYS.statsTracking]: DEVICE_DEFAULTS.statsTracking,
-      [DEVICE_KEYS.autoReadMode]: DEVICE_DEFAULTS.autoReadMode,
-      [DEVICE_KEYS.exportTranscript]: DEVICE_DEFAULTS.exportTranscript,
-      [DEVICE_KEYS.exportFolder]: DEVICE_DEFAULTS.exportFolder,
-      [DEVICE_KEYS.exportAskWhere]: DEVICE_DEFAULTS.exportAskWhere,
-    });
-    return {
-      statsTracking: Boolean(stored[DEVICE_KEYS.statsTracking]),
-      autoReadMode: Boolean(stored[DEVICE_KEYS.autoReadMode]),
-      exportTranscript: Boolean(stored[DEVICE_KEYS.exportTranscript]),
-      exportFolder: String(stored[DEVICE_KEYS.exportFolder] ?? ""),
-      exportAskWhere: Boolean(stored[DEVICE_KEYS.exportAskWhere]),
-    };
-  } catch {
-    return { ...DEVICE_DEFAULTS };
-  }
-}
-
-export async function saveDevicePrefs(
-  patch: Partial<DevicePrefs>,
-): Promise<void> {
-  const write: Record<string, boolean | string> = {};
-  for (const [name, value] of Object.entries(patch)) {
-    const key = DEVICE_KEYS[name as keyof DevicePrefs];
-    if (key === undefined) continue;
-    if (typeof value === "boolean" || typeof value === "string") {
-      write[key] = value;
-    }
-  }
-  if (Object.keys(write).length > 0) await chrome.storage.local.set(write);
-}
-
-/**
- * A download path Chrome will accept.
- *
- * `chrome.downloads` rejects anything that leaves the downloads directory, so
- * absolute paths, drive letters and `..` are stripped rather than passed
- * through to fail at the call site with an opaque error.
- */
-export function downloadPath(folder: string, filename: string): string {
-  const clean = folder
-    .split(/[\\/]+/)
-    .map((part) => part.trim())
-    // A drive letter, a leading slash or a `..` would all make Chrome
-    // reject the whole download rather than clamp it.
-    .filter((part) => part && part !== "." && part !== "..")
-    .filter((part) => !/^[a-zA-Z]:$/.test(part))
-    .join("/");
-  return clean ? `${clean}/${filename}` : filename;
-}
-
-export function onDevicePrefsChanged(
-  handler: (prefs: DevicePrefs) => void,
-): () => void {
-  const listener = (
-    changes: Record<string, chrome.storage.StorageChange>,
-    area: string,
-  ): void => {
-    if (area !== "local") return;
-    if (!Object.values(DEVICE_KEYS).some((key) => key in changes)) return;
-    void loadDevicePrefs().then(handler);
   };
   chrome.storage.onChanged.addListener(listener);
   return () => chrome.storage.onChanged.removeListener(listener);
