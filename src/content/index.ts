@@ -215,9 +215,17 @@ async function start(): Promise<void> {
   );
   overlay.mount(found.player);
   const focus = new FocusView(found.player, found.video, words, {
-    onFocus: (focusMode) => {
-      applySettings({ ...settings, focusMode });
-      void saveSettings({ focusMode });
+    onCenter: (readingCentered) => {
+      applySettings({ ...settings, readingCentered });
+      void saveSettings({ readingCentered });
+    },
+    onReading: (focusReading) => {
+      const patch = {
+        focusReading,
+        ...(focusReading ? { focusMode: true } : {}),
+      };
+      applySettings({ ...settings, ...patch });
+      void saveSettings(patch);
     },
   });
   controls!.attachFocus(focus.controls);
