@@ -7,7 +7,12 @@ import {
 
 export type PresetSettings = Omit<
   Settings,
-  "enabled" | "language" | "romanize" | "focusMode"
+  | "enabled"
+  | "language"
+  | "romanize"
+  | "focusMode"
+  | "focusReading"
+  | "readingCentered"
 >;
 
 export interface Preset {
@@ -17,7 +22,14 @@ export interface Preset {
 }
 
 const KEY = "savedPresets";
-const USER_FIELDS = new Set(["enabled", "language", "romanize", "focusMode"]);
+const USER_FIELDS = new Set([
+  "enabled",
+  "language",
+  "romanize",
+  "focusMode",
+  "focusReading",
+  "readingCentered",
+]);
 
 function appearance(value: unknown): PresetSettings {
   const settings = normalizeSettings(value);
