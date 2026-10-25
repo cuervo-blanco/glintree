@@ -43,7 +43,6 @@ export type Field = ToggleField | SelectField | RangeField | ColorField;
 
 /** The colours that only mean anything under the Custom theme. */
 export const CUSTOM_COLOR_KEYS = [
-  "customBackground",
   "customText",
   "customFaded",
   "customAccent",
@@ -75,7 +74,7 @@ export const FIELDS: Field[] = [
     key: "motion",
     group: "reading",
     label: "Motion",
-    help: "Whether the line slides a word at a time or holds still and swaps a whole line at once. Static is far easier on the eyes over a long video. Read by Bionic and Plain; the one-word modes and Highlighter always slide.",
+    help: "Slide word by word, or hold a complete line. Available in Plain and Bionic.",
     options: (Object.keys(MOTION_LABELS) as Motion[]).map((value) => ({
       value,
       label: MOTION_LABELS[value],
@@ -119,8 +118,8 @@ export const FIELDS: Field[] = [
     kind: "select",
     key: "theme",
     group: "appearance",
-    label: "Theme",
-    help: "None of the built-in palettes use pure black or pure white — that contrast is what causes eye strain over a long session. The four colours below always show whichever palette is on screen.",
+    label: "Colour preset",
+    help: "Colour presets for the text. The caption background stays black.",
     options: (Object.keys(THEME_LABELS) as ReaderTheme[]).map((value) => ({
       value,
       label: THEME_LABELS[value],
@@ -128,28 +127,21 @@ export const FIELDS: Field[] = [
   },
   {
     kind: "color",
-    key: "customBackground",
-    group: "appearance",
-    label: "Custom: background",
-    help: "These show the palette on screen, whichever theme is selected. Change one and it becomes your Custom theme, starting from the theme you were looking at.",
-  },
-  {
-    kind: "color",
     key: "customText",
     group: "appearance",
-    label: "Custom: current word",
+    label: "Current word colour",
   },
   {
     kind: "color",
     key: "customFaded",
     group: "appearance",
-    label: "Custom: surrounding words",
+    label: "Surrounding word colour",
   },
   {
     kind: "color",
     key: "customAccent",
     group: "appearance",
-    label: "Custom: accent",
+    label: "Accent colour",
     help: "The pivot letter, the focal marks, and the highlighter block.",
   },
   {
@@ -290,8 +282,8 @@ export const FIELDS: Field[] = [
     kind: "range",
     key: "backgroundOpacity",
     group: "appearance",
-    label: "Card opacity",
-    help: "How much of the video shows through behind the words. Lower is quieter; too low and the text has to fight the picture.",
+    label: "Background opacity",
+    help: "How much of the video shows through the black caption background.",
     min: 0,
     max: 1,
     step: 0.02,
@@ -310,13 +302,6 @@ export const FIELDS: Field[] = [
     group: "captions",
     label: "Remove fillers",
     help: "Drop um, uh and similar. They pass unnoticed in speech but interrupt a written stream.",
-  },
-  {
-    kind: "toggle",
-    key: "readerInReadMode",
-    group: "reading",
-    label: "Reader in read mode",
-    help: "Keep the one-word reader running over the video while studying in read mode.",
   },
   {
     kind: "toggle",
