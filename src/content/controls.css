@@ -1,7 +1,6 @@
 .trf-reader .trf-controls {
   position: absolute;
-  right: 8px;
-  bottom: calc(100% + 6px);
+  z-index: 2;
   color: var(--text);
   font:
     400 13px/1.4 system-ui,
@@ -9,35 +8,10 @@
   letter-spacing: normal;
   text-transform: none;
   text-shadow: none;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 60ms ease;
-}
-
-.html5-video-player:hover .trf-reader .trf-controls,
-.trf-reader .trf-controls:focus-within,
-.trf-reader .trf-controls[open] {
-  opacity: 1;
   pointer-events: auto;
 }
 
-.trf-reader .trf-controls > summary {
-  padding: 5px 9px;
-  border: 1px solid var(--edge);
-  border-radius: 7px;
-  background: var(--bg);
-  cursor: pointer;
-  list-style: none;
-}
-
-.trf-reader .trf-controls > summary::-webkit-details-marker {
-  display: none;
-}
-
 .trf-reader .trf-control-panel {
-  position: absolute;
-  right: var(--trf-panel-right, 0px);
-  bottom: calc(100% + 6px);
   width: var(--trf-panel-width, 340px);
   max-width: calc(100vw - 20px);
   max-height: var(--trf-panel-height, 320px);
@@ -51,11 +25,6 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   scrollbar-width: thin;
   scrollbar-color: var(--faded) var(--bg);
-}
-
-.trf-reader .trf-controls[data-below="true"] .trf-control-panel {
-  top: calc(100% + 6px);
-  bottom: auto;
 }
 
 .trf-reader .trf-control-row {
@@ -111,6 +80,109 @@
 
 .trf-reader .trf-controls :focus-visible {
   outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.trf-reader.trf-interactive:not(.trf-idle) .trf-stage {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.trf-reader.trf-dragging .trf-stage {
+  cursor: grabbing;
+}
+
+.trf-reader.trf-editing,
+.trf-reader.trf-interactive:has(:focus-visible) {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.trf-reader .trf-resize-width,
+.trf-reader .trf-resize-text {
+  position: absolute;
+  right: 3px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--bg);
+  font:
+    14px/1 system-ui,
+    sans-serif;
+  touch-action: none;
+  user-select: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.trf-reader .trf-resize-width {
+  top: calc(50% - 11px);
+  cursor: ew-resize;
+}
+
+.trf-reader .trf-resize-text {
+  bottom: 2px;
+  cursor: nwse-resize;
+}
+
+.trf-reader:not(.trf-idle):is(:hover, :has(:focus-visible), .trf-editing)
+  .trf-resize-width,
+.trf-reader:not(.trf-idle):is(:hover, :has(:focus-visible), .trf-editing)
+  .trf-resize-text {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Cover the picture without stopping presented frames or the video clock. */
+.trf-reader ~ .trf-focus-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 59;
+  background: #0b0b0c;
+  pointer-events: none;
+}
+
+.trf-reader ~ .trf-reader-status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 59;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  color: #b5bac3;
+  background: #16181bcc;
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.trf-reader ~ .trf-reader-status[hidden] {
+  display: none;
+}
+
+.trf-reader ~ .trf-reader-status button {
+  padding: 2px 4px;
+  border: 1px solid #6e7278;
+  border-radius: 3px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.trf-reader ~ .trf-reader-status button:focus-visible {
+  outline: 2px solid #e4572e;
   outline-offset: 2px;
 }
 
