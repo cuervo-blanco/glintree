@@ -1,5 +1,6 @@
 import { wordAt, type TimedWord } from "./captions";
 import { romanize } from "./romanize";
+import { splitAtReadingOrp } from "./graphemes";
 
 /** A flowing excerpt keeps the current line steady while its word advances. */
 export class BookView {
@@ -80,8 +81,7 @@ export class BookView {
     this.centered = centered;
     if (changed) {
       for (const [offset, span] of this.spans.entries()) {
-        const text = this.words[this.start + offset].word.text;
-        span.textContent = romanized ? romanize(text) : text;
+        this.fill(span, this.words[this.start + offset].word.text);
       }
     }
     // Font, script and player changes can wrap the same word onto another line.
@@ -103,37 +103,64 @@ export class BookView {
       anchor = Math.max(0, low - 1);
     }
     if (next === this.current && anchor === this.anchor) return;
+    const following = next >= 0 && next === this.anchor + 1;
     this.mark(this.current, false);
     this.current = next;
     this.anchor = anchor;
-    if (this.active) this.render();
+    if (this.active) this.render(following);
   }
 
   private mark(index: number, current: boolean): void {
     const span = this.spans[index - this.start];
     if (!span) return;
     span.classList.toggle("trf-book-current", current);
-    if (current) span.setAttribute("aria-current", "true");
-    else span.removeAttribute("aria-current");
+    if (current) {
+      span.setAttribute("aria-current", "true");
+      span.getAnimations?.().forEach((animation) => animation.cancel());
+    } else span.removeAttribute("aria-current");
   }
 
-  private render(): void {
+  private fill(span: HTMLElement, text: string): void {
+    const { before, pivot, after } = splitAtReadingOrp(
+      this.romanized ? romanize(text) : text,
+    );
+    const letter = document.createElement("span");
+    letter.className = "trf-pivot";
+    letter.textContent = pivot;
+    span.replaceChildren(before, letter, after);
+  }
+
+  private render(following = false): void {
+    const previousLine = this.line;
     // Refill only near an excerpt edge, rather than rewrapping every word.
     if (
       !this.spans.length ||
       (this.start > 0 && this.anchor < this.start + 40) ||
       (this.end < this.words.length && this.anchor >= this.end - 40)
     ) {
-      this.start = Math.max(0, this.anchor - 100);
-      this.end = Math.min(this.words.length, this.anchor + 101);
+      let start = Math.max(0, this.anchor - 100);
+      const retained = this.spans[start - this.start];
+      // Starting on a retained line keeps nearby words from rewrapping mid-playback.
+      if (retained && this.root.clientHeight) {
+        const top = retained.getBoundingClientRect().top;
+        while (
+          start > this.start &&
+          Math.abs(
+            this.spans[start - this.start - 1].getBoundingClientRect().top -
+              top,
+          ) < 1
+        )
+          start -= 1;
+      }
+      this.start = start;
+      this.end = Math.min(this.words.length, this.anchor + 101, start + 201);
       const content = document.createDocumentFragment();
       this.spans = [];
       for (let index = this.start; index < this.end; index += 1) {
         const span = document.createElement("span");
         span.className = "trf-book-word";
         span.dataset.word = String(index);
-        const text = this.words[index].word.text;
-        span.textContent = this.romanized ? romanize(text) : text;
+        this.fill(span, this.words[index].word.text);
         content.append(span, " ");
         this.spans.push(span);
       }
@@ -142,6 +169,21 @@ export class BookView {
     }
     this.mark(this.current, true);
     this.reflow();
+    if (
+      following &&
+      previousLine !== null &&
+      previousLine !== this.line &&
+      !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      // Soften a line change without fading the focal word or delaying its timing.
+      for (const span of this.spans) {
+        if (Number(span.dataset.word) !== this.current)
+          span.animate?.([{ opacity: 0.35 }, { opacity: 1 }], {
+            duration: 60,
+            easing: "ease-out",
+          });
+      }
+    }
   }
 
   private reflow = (): void => {
@@ -163,7 +205,13 @@ export class BookView {
     const view = this.root.getBoundingClientRect();
     if (this.centered) {
       // Shift just this line so the surrounding paragraph keeps its full width.
-      const offset = view.left + view.width / 2 - word.left - word.width / 2;
+      const pivot = span
+        .querySelector<HTMLElement>(".trf-pivot")!
+        .getBoundingClientRect();
+      const spacing =
+        parseFloat(getComputedStyle(this.root).letterSpacing) || 0;
+      const offset =
+        view.left + view.width / 2 - pivot.left - (pivot.width - spacing) / 2;
       this.shifted = this.spans.filter(
         (item) => Math.abs(item.getBoundingClientRect().top - word.top) < 1,
       );
