@@ -1,513 +1,148 @@
-<p align="center">
-  <img src="icons/128.png" width="80" alt="" />
-</p>
+# TextReadsFast for YouTube
 
-<h1 align="center">TextReadsFast for YouTube</h1>
+A caption reader for language learning and faster reading. Follow a video one
+word at a time, read a caption line, or study its full transcript without
+leaving the player.
 
-<p align="center">
-  <strong>Read YouTube subtitles one word at a time — so 2x actually works.</strong>
-</p>
+## Use it
 
-<p align="center">
-  <a href="LICENSE"><img alt="MIT licensed" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
-  <img alt="Manifest V3" src="https://img.shields.io/badge/manifest-v3-lightgrey.svg" />
-  <img alt="Chrome and Edge" src="https://img.shields.io/badge/chrome%20%7C%20edge-supported-brightgreen.svg" />
-  <img alt="No telemetry" src="https://img.shields.io/badge/telemetry-none-success.svg" />
-</p>
+1. Turn **TRF** on or off in YouTube’s player controls.
+2. Click the captions to open their settings. Click them again, click outside,
+   or press Escape to close the panel.
+3. Drag the captions to move them. Drag any corner to resize them, like an
+   object in an image editor.
+4. Click the extension’s toolbar icon to open the full settings page directly.
 
-<p align="center">
-  <img src=".github/assets/rsvp.gif" width="720" alt="One word at a time, with the pivot letter held at a fixed point" />
-</p>
+The caption background is a plain black rectangle. Adjust its opacity, choose
+text colours and a font, and keep the reading mode that works for you. Colour
+presets provide starting points; save your own named preset to reuse a setup.
+There is no separate profile system.
 
-<p align="center">
-  <em>Your eyes stop moving. The words move instead — and the red letter never leaves that column.</em>
-</p>
+Keyboard users can focus the captions, press Enter or Space for settings, and
+use the arrow keys to move them. Shift moves in larger steps. Corner grips also
+support the arrow keys.
 
-Reading is slow mostly because the eye jumps. RSVP removes the jumps by holding
-the text still and moving the words, and pins the one letter your brain uses to
-recognise a word to the same spot every time.
+## Reading modes
 
-The pace comes from YouTube's own playback rate: set the video to 2x and the
-reader tracks it exactly, because it reads the video clock rather than a timer
-of its own. Pausing, seeking and speed changes all just work.
+| Mode          | What appears                                                |
+| ------------- | ----------------------------------------------------------- |
+| RSVP          | One word with its recognition point held at a fixed column. |
+| RSVP + Bionic | A pinned word with bolded surrounding words.                |
+| Bionic        | A caption line with bold word beginnings.                   |
+| Plain         | A caption line with minimal emphasis.                       |
+| Highlighter   | A caption line with a block on the current word.            |
+| Focus line    | One word centred without a coloured pivot.                  |
 
-<table>
-<tr>
-<td width="33%" valign="top">
+Bionic and Plain can hold a whole line still instead of sliding word by word.
+The small WPM indicator estimates the nearby caption pace and accounts for
+playback speed. It never controls the video or decides when words advance.
 
-**Six ways to read**
+## Focus and transcript
 
-RSVP, RSVP + Bionic, Bionic, Static, Highlighter, Focus line. Nine profiles,
-ten palettes, and a custom one.
+**Focus** covers the picture while audio and caption timing continue.
+**Fullscreen focus** centres the text against a black screen. Move the pointer
+or use the keyboard to reveal the controls; Escape leaves fullscreen.
 
-</td>
-<td width="33%" valign="top">
+**Transcript** opens a side panel containing the whole caption track. Click a
+word or timestamp to seek to it, including while paused. The current word is
+marked as the video plays. Scroll to browse independently, then use **Follow**
+to return to the current word. The panel can be opened or closed independently
+of fullscreen.
 
-**A study mode**
+The old Read Mode, assistant, notes, library and export system have been removed.
+Focus and the transcript stay inside the existing player.
 
-Chapters, timestamped notes, an optional AI assistant, and export to one
-Markdown file.
+## Languages and romanization
 
-</td>
-<td width="33%" valign="top">
+Choose a preferred caption language in settings. Hindi and Bengali can be read
+in their native scripts or in Latin letters with diacritics. The transcript and
+reader follow the same script choice. Chinese captions without spaces are
+segmented into words.
 
-**Nothing phones home**
+Romanization happens locally and follows spelling, including written inherent
+vowels: भारत becomes _bhārata_, and বাংলা becomes _bāṁlā_. It does not infer
+pronunciation. The original words and timings remain intact.
 
-No analytics, no account, no server. The assistant is opt-in and uses your own
-API key.
+The source track supplies the timing. Automatically translated captions cannot
+provide word-for-word alignment with speech in a different language, so the
+reader uses the selected original track rather than silently adopting a
+translation being shown by YouTube.
 
-</td>
-</tr>
-</table>
-
-> **Status: early.** Built and unit-tested, but not yet run against a broad
-> range of real videos. See [Known risks](#known-risks).
-
----
-
-## Six ways to read
-
-All six reading the same sentence, at the same instant:
-
-<p align="center">
-  <img src=".github/assets/modes.gif" width="740" alt="The six reading modes running side by side" />
-</p>
-
-| Mode              | What it does                                                                             |
-| ----------------- | ---------------------------------------------------------------------------------------- |
-| **RSVP**          | One word, pinned at the focal point, with the pivot letter picked out. The original.     |
-| **RSVP + Bionic** | The same pinned word, with the neighbours' leading letters bolded so you can read ahead. |
-| **Bionic**        | A line at once, leading letters emboldened. The accent on them can be turned off.        |
-| **Plain**         | A line with nothing marked at all — no pivot, no bold, no accent. The quietest of them.  |
-| **Highlighter**   | A block behind the current word, the way captions look on Shorts. Holds up at speed.     |
-| **Focus line**    | RSVP's rhythm without its coloured letter — one word, plainly centred.                   |
-
-### Dynamic or static
-
-A separate axis, and the one worth knowing about. It decides whether the line
-**slides** — advancing a word at a time, so something on screen changes roughly
-three hundred times a minute — or **holds still**, showing a whole line and
-swapping once at a sentence or clause boundary, around twenty times a minute.
-
-That is a setting rather than a mode because it is a genuinely independent
-question. "How the window moves" and "how the current word is marked" were
-conflated before, which meant Bionic could only ever slide. Split apart, Bionic
-held still is just a combination — a printed-looking line with its leading
-letters bolded, and nothing sliding underneath you.
-
-Read by **Bionic** and **Plain**. The one-word modes have no line to hold, and
-Highlighter's block has to sit on the word being spoken, so those four always
-slide and the control dims itself.
-
-Static also builds its own lines, since YouTube's cue boundaries do not survive
-parsing — the transcript is one flat timeline of words, which is what every
-sliding mode needs. They are rebuilt from the punctuation instead: at sentences,
-at clauses once a line is worth ending, and at a hard cap so an unpunctuated
-auto-transcript cannot run off the card. See
-[`src/content/lines.ts`](src/content/lines.ts).
-
-## Ready-made looks
-
-Switch profile mid-video from the toolbar — the right settings depend on what is
-on screen.
-
-<table>
-<tr>
-<td width="50%" align="center">
-
-<img src=".github/assets/profile-lyric.gif" alt="The Lyric profile" />
-
-**Lyric** — gold italic on a dark band
-
-</td>
-<td width="50%" align="center">
-
-<img src=".github/assets/profile-black-box.gif" alt="The Black Box profile" />
-
-**Black Box** — white on solid black
-
-</td>
-</tr>
-</table>
-
-| Profile          | What it is for                                                       |
-| ---------------- | -------------------------------------------------------------------- |
-| **Default**      | One word at a fixed point, dark, a little context either side.       |
-| **Peripheral**   | Pinned word with the preview bolded ahead of it, and nothing behind. |
-| **Serif Flow**   | A whole line at once, serif in black on white. Reads like print.     |
-| **Serif Static** | The same page, held still. Bionic without anything sliding.          |
-| **Clarity Cold** | Atkinson at full weight on cold light blue, with a blue pivot.       |
-| **Obsidian**     | A violet block on lilac, over near-black.                            |
-| **Black Box**    | White on solid black, a line at a time. Nothing moves.               |
-| **Lyric**        | Gold italic on a solid dark band, small and low in the frame.        |
-
-Ten palettes including a **Custom** one with four colour pickers, plus a slider
-for how much of the video shows through the card — down to none at all. On top
-of any of them: **slant**, **letter case**, **weight**, and an **outline**
-around every glyph. The outline matters most — a dark edge is what makes text
-legible over an arbitrary moving picture.
-
-Editing any control leaves the change live and marks the profile _modified_ —
-built-ins are never overwritten, so **Default** stays exactly as shipped
-whatever you do to it. **Save as…** keeps your version under its own name.
-
-> Two honest limits. No italic faces are bundled, so the slant is the browser
-> slanting the upright one — fine on the serifs, less so on the monospaces. And
-> not every family ships every weight (Geist stops at 600), above which the
-> browser thickens it itself and reads thinner than a real bold. Both are
-> because `src/reader-core/fonts.css` is byte-identical to the desktop app, so
-> adding faces means changing both repositories.
-
-## Read Mode
-
-A study view for the video you are already watching. Press **Shift+R**, or use
-the toolbar popup.
-
-<p align="center">
-  <img src=".github/assets/read-mode.png" width="880" alt="Read Mode: chapters, the video, notes, and the assistant" />
-</p>
-
-- **Chapters, on the left.** YouTube's own chapter list when the video has one.
-  When it does not, the transcript is segmented and the sections are named by a
-  model — asked for once, then saved.
-- **Notes, under the video.** Start typing anywhere and the note box takes it.
-  Each note keeps the timestamp it was written at; clicking one seeks there.
-- **An assistant, on the right.** Summarises the transcript when you open the
-  view, and answers questions about it afterwards. **Requires your own API key
-  — see [Privacy and data](#privacy-and-data).**
-- **Export** to a single Markdown file — summary, notes, the questions you
-  asked, and optionally the whole transcript. Point it at an Obsidian vault or
-  pick the folder each time.
-- **A library** of past sessions, with watch time, coverage and rewatch counts.
-  Tracking is a setting, and turning it off stops the recording rather than
-  merely hiding it.
-
-The reader keeps running over the video the whole time. Read Mode changes the
-page around the video, not the video.
-
-## How it differs from the desktop app
-
-[TextReadsFast](https://github.com/Ramonvdo/textreadsfast) transcribes your
-computer's audio live, which means guessing when each word was spoken and pacing
-against a backlog that can never quite be trusted.
-
-Here, YouTube hands over the entire transcript with timings attached before
-playback starts. So there is no transcription, no backlog, no pacing to
-estimate — the current word is a lookup against `video.currentTime`. Seeking,
-pausing and playback rate all work without a line of code, because the video
-clock already accounts for them.
-
-The two share their reading engine — the pivot maths and alignment — so a word
-lands identically in both. See [`src/reader-core/`](src/reader-core/README.md).
-
-## Install
-
-Not yet on the Chrome Web Store. To run it now:
+## Install from source
 
 ```bash
 pnpm install
 pnpm run build
 ```
 
-Then open `chrome://extensions`, enable **Developer mode**, choose **Load
-unpacked**, and select **`dist/`** — not the repository root. The root has no
-manifest precisely so it cannot be loaded by mistake; `dist/` is the extension.
+Open your browser’s extensions page, enable Developer mode, choose **Load
+unpacked**, and select **dist/**. The source directory is not an installable
+extension. Refresh an already-open YouTube tab after reloading the extension.
 
-Chrome and Edge; Firefox is a later port, since its MV3 differs enough to be its
-own task.
-
-`pnpm run watch` rebuilds on change — reload the extension to pick changes up.
-
-## The science
-
-### Reading is slow because the eye moves
-
-Skilled silent reading runs at roughly **200-300 words per minute**, and that
-ceiling is not set by how fast the brain recognises words. It is set by the
-mechanics of looking.
-
-Your eyes do not glide along a line. They move in jerks — **saccades** — and see
-almost nothing during the jump itself, a phenomenon called _saccadic
-suppression_. Vision happens only in the still moments between them, the
-**fixations**, which last around **200-250 milliseconds** each. A saccade in
-reading advances about 7-9 characters and takes 20-50ms, and roughly **10-15% of
-them go backwards** — _regressions_, where you re-read something that did not
-land the first time.
-
-So the cost of reading a line is not the recognition. It is the fixate, jump,
-re-acquire, occasionally jump back cycle, repeated for every few characters.
-Only a narrow window around each fixation is sharp enough to read at all: the
-**fovea** covers about 1-2° of visual angle, which is a handful of letters.
-Everything else on the line is peripheral blur that your brain is quietly
-guessing at.
-
-This is the best-established finding in reading research — Keith Rayner's
-reviews of eye movements in reading are the standard reference — and it is the
-one thing an interface can actually do something about.
-
-### RSVP removes the movement
-
-**Rapid Serial Visual Presentation** presents words one at a time at a single
-screen position. The text moves; the eye does not. No saccades, no
-re-acquisition, no line-ends to find, no place to lose.
-
-Mary Potter's work in the 1970s-80s established the striking part: people can
-extract the **gist** of a stream at rates far above normal reading — on the
-order of **10+ words per second** — because word recognition itself was never
-the bottleneck.
-
-### The Optimal Recognition Point
-
-Removing saccades is only half of it. Where a word is presented matters too.
-
-Word recognition is fastest when the eye lands **slightly left of the word's
-centre** — a finding from Kevin O'Regan and colleagues, usually called the
-_Optimal Viewing Position_. Land there and the whole word falls inside the
-sharp foveal window at once. Land on the first or last letter and recognition
-measurably slows, because part of the word is out in the blur.
-
-Normal reading spends effort _targeting_ that position on every word. RSVP can
-simply guarantee it: shift each word so its optimal letter sits on the same
-fixed column, every time. Your eye finds it once and never has to move again.
-
-That letter is the red one. In this extension it is called the **Optimal
-Recognition Point**, and holding it still is the entire mechanism:
-
-```
-        ·
-    But un̲til a few
-        ·
-```
-
-The two small marks are a fixation anchor — something for the eye to hold onto
-so it does not drift toward the middle of longer words.
-
-### What RSVP costs, honestly
-
-The 1000-words-per-minute claims made for RSVP reading apps did not survive
-scrutiny, and it is worth being clear about why. Three real losses:
-
-- **No regressions.** Normal readers jump back when a sentence does not resolve,
-  and that repair is a load-bearing part of comprehension. A word stream does
-  not let you. When comprehension breaks, it stays broken.
-- **No parafoveal preview.** While fixating one word you are already extracting
-  information from the next, which saves real time per word. Showing one word
-  alone throws that benefit away — which is part of why RSVP is not simply
-  free speed. This is the loss the **RSVP + Bionic** mode exists to soften: a
-  bolded word-opening stays legible further into the periphery than a plain
-  one, so the neighbours can be taken in without moving fixation off the pivot.
-- **No wrap-up time.** Readers slow down at clause and sentence boundaries to
-  integrate what they have just read. A constant-rate stream gives no room for
-  it, so complex or unfamiliar material suffers most.
-
-The honest summary: **RSVP reliably beats normal reading for gist at high speed,
-and reliably loses to it for careful study of difficult text.**
-
-### Why this is a good fit for video specifically
-
-Here is the argument for putting RSVP over YouTube rather than over a book.
-
-Conversational speech runs at roughly **150 words per minute**. Play a video at
-**2x** and you are at ~300 wpm — the top of ordinary silent reading. At **3x**
-you are near 450 wpm, past what reading a subtitle line can keep up with. That
-is precisely the range where removing saccades stops being a parlour trick and
-starts being the only way to follow along.
-
-And the two big RSVP costs are much smaller here than they are for prose:
-
-- **You are not relying on the text alone.** The audio is running in parallel.
-  Speech and text are processed through partly different channels, so the stream
-  is reinforcing something you are already receiving rather than carrying the
-  whole message by itself.
-- **You can regress after all.** It is a video: scrub back a few seconds. The
-  chapter list and timestamped notes in Read Mode exist partly for this — they
-  are the repair mechanism RSVP normally denies you.
-- **The pace is not arbitrary.** Most RSVP apps ask you to pick a words-per-
-  minute number, which is a guess. Here the rate is set by the speaker, and the
-  reader is a lookup against `video.currentTime` — so pausing, seeking and
-  changing speed are handled by the video clock rather than estimated.
-
-### A note on Bionic Reading
-
-Bionic-style bolding of each word's leading letters is included because a fair
-number of people find it genuinely more comfortable, and comfort matters over a
-long session.
-
-But the evidence that it makes you read _faster_ is weak — independent attempts
-to replicate the claimed speed benefit have largely not found one. It is offered
-as a preference, not as a performance feature, and the accent colour on the bold
-letters can be turned off entirely if you want it quieter still.
-
-The same applies to the other line modes. **Static** and **Highlighter** make no
-speed claim at all. They exist because a fixed focal point is demanding, and
-sometimes you want a calm subtitle you can glance at instead.
-
-**Static** is the deliberate opposite of everything above. Every other mode
-advances one word per word, so something on screen changes roughly three hundred
-times a minute. Static shows a whole line, holds it still, and swaps once at a
-sentence or clause boundary — around twenty times a minute. It makes no claim to
-speed at all; it is there for when you want to be able to look away.
-
-Because YouTube's own cue boundaries do not survive parsing — the transcript is
-flattened into one timeline of words, which is what every sliding mode needs —
-the lines are rebuilt from the punctuation, breaking at sentences, at clauses
-once a line is worth ending, and at a hard cap so an unpunctuated
-auto-transcript cannot run off the card. See
-[`src/content/lines.ts`](src/content/lines.ts).
-
-## Settings
-
-Click the captions to open or close their settings. Drag them to move them;
-the right-edge grip changes the card width, and the corner grip changes text
-size. The panel keeps the font, colours and reading mode together, with
-**Romanized script** when the transcript contains Hindi or Bengali. Edits also
-work while paused. Escape or a click outside closes the panel.
-
-The small corner indicator estimates the current words per minute from nearby
-caption timings and the playback speed. **Focus** covers the picture while the
-video and audio continue; **Show video** brings it back. YouTube's playback
-controls stay available.
-
-Click the toolbar icon → **All settings…**, or find Options on
-`chrome://extensions`. There is a live preview running the real overlay, so
-every control can be judged by looking at it.
-
-Defaults match the desktop app so the two feel like one product.
-
-### Hindi and Bengali
-
-Choose **हिन्दी (Hindi)** or **বাংলা (Bengali)** under **Preferred language**
-when a video offers those captions. Native script is the default; turn on
-**Romanize Hindi and Bengali** to read Latin letters with diacritics in any
-reader mode. The preview follows the selected language.
-
-Romanization happens locally and follows the spelling, including inherent
-vowels: भारत becomes _bhārata_, and বাংলা becomes _bāṁlā_. It does not infer
-pronunciation. Caption timings and the original study transcript stay intact,
-and switching reading profiles preserves the language and romanization choice.
-
-## Privacy and data
-
-**The reader itself never sends anything anywhere.** Caption tracks are read
-from YouTube, which your browser is fetching regardless, and settings live in
-`chrome.storage.sync`. There is no analytics, no telemetry, and no account.
-
-**The Read Mode assistant is the one exception, and it is opt-in.** It does
-nothing at all until you add your own API key. Once you have:
-
-- Opening Read Mode sends **the video's transcript and title** to the provider
-  you configured — [OpenRouter](https://openrouter.ai) by default — to generate
-  the summary. Questions you type are sent with it.
-- Your key is stored in `chrome.storage.local`, which is **not** synced to
-  Google's servers or to your other devices, and is never given to any content
-  script. Only the extension's own service worker can read it, and
-  `pnpm run check-boundaries` fails the build if that stops being true.
-- Network access to the provider is an **optional** permission, requested the
-  first time you save a key rather than granted at install.
-- Notes, sessions and stats are held in the extension's own IndexedDB, on this
-  device only.
-
-Delete the key and the extension goes back to sending nothing. Full detail in
-[PRIVACY.md](PRIVACY.md).
-
-## Known risks
-
-**YouTube's caption plumbing is not a public API.** It changes, and this
-extension reads it three ways so that one change does not break everything:
-
-1. **Capture what the player fetches for itself.** A page-context script hooks
-   `fetch` and `XMLHttpRequest` for `/api/timedtext`. Prefer this signed response,
-   requesting the original track through the same URL if auto-translation is on.
-2. **Fetch the caption track directly**, from the URL in the page's player
-   response. Works without the viewer turning captions on — when it works.
-3. Failing both, the extension does nothing at all.
-
-Direct requests are already unreliable. Requesting a caption track without the
-proof-of-origin token the player attaches returns **HTTP 200 with an empty
-body** — verified against a live video — rather than an error. Anything trusting
-the status code would conclude it had captions and then render nothing, which is
-why success here is judged on whether words actually came out.
-
-**Word-level timing depends on the track.** Auto-generated captions carry a
-per-word offset, which is exactly what this needs. Manually uploaded ones
-usually give a whole phrase per cue, so those are interpolated across the cue by
-character count — good enough to read along with, but not as tight.
-
-**Translation is not word-for-word speech alignment.** The reader uses the
-selected source track rather than silently accepting YouTube's translated
-captions. Romanization changes the letters while keeping the original words
-and timestamps.
-
-**Videos with no captions do nothing.** That is deliberate: there is no
-transcription here, so there is nothing to fall back to.
-
-**A model can be wrong.** Summaries and generated chapter names are a model's
-reading of the transcript, not a transcript of the video. Treat them as notes,
-not as a record of what was said.
+Chrome is the tested browser. Other Chromium browsers can load the same package,
+but should be tested before being declared supported.
 
 ## Development
 
 ```bash
+pnpm run watch         # rebuild on change
 pnpm run typecheck
-pnpm test               # reader, captions, chapters, charts, read mode
-pnpm run check-drift    # reader-core vs the desktop app
-pnpm run check-boundaries  # the API key cannot reach a content script
-pnpm run check          # all of the above
-pnpm run shoot          # screenshot both harnesses, assert their geometry
+pnpm test
+pnpm run check         # typecheck and unit tests
+pnpm run shoot         # screenshot reading modes and settings
+pnpm run reel          # generate reading-mode GIFs
+pnpm run package       # build a store-ready ZIP
+pnpm run format
 ```
 
-```
+Visual checks use Python’s Playwright package; GIF generation also needs Pillow.
+
+`src/reader-core/` remains a copy of the desktop reader’s font and focal-point
+logic. It is excluded from formatting. The optional `pnpm run check-drift`
+compares it with a companion desktop checkout; supply that checkout with
+`node scripts/check-drift.mjs --desktop /path/to/textreadsfast`.
+
+```text
 src/
-  reader-core/   copied from the desktop app — do not edit here
-  content/       caption parsing, the overlay, the video-clock loop
-  page/          runs in the page context to reach YouTube's own objects
-  readmode/      the study view: chapters, notes, assistant, export
-  background/    the service worker: the API key, the provider, the library
-  library/       saved sessions and study stats
-  options/       settings page
-  popup/         toolbar profile switcher
-  dev/           screenshot harnesses, not shipped
-  profiles.ts    the built-in profiles and the saved-profile store
+  content/       caption parsing, reader, editing controls, focus and transcript
+  page/          signed caption capture in YouTube’s page context
+  options/       settings, preview and saved presets
+  background/    opens settings when the toolbar icon is clicked
+  reader-core/   shared reading geometry and fonts
+  presets.ts     user-created presets
+  settings.ts    preferences and defaults
 ```
 
-Two boundaries are enforced by scripts rather than by convention:
+## Timing and limitations
 
-- **The API key never leaves the service worker.** `check-boundaries` fails the
-  build if anything under `src/content/` or `src/page/` references it. A content
-  script runs in YouTube's page and must not be trusted with it.
-- **`src/reader-core/` is byte-identical to the desktop app.** `check-drift`
-  compares them and fails on any difference. It cannot prevent divergence, only
-  make it visible — if the two disagree about where a pivot goes, the same word
-  reads differently in the app than in the browser.
+Every displayed word is looked up against `video.currentTime`. Pausing,
+seeking and playback speed therefore use the video clock, with no transcription
+or artificial reading queue.
 
-`pnpm run shoot` renders both harnesses in headless Chromium and asserts their
-geometry. It is what catches layout regressions that no unit test can see —
-including whether the Highlighter block changes a word's width and makes the
-whole line twitch.
+YouTube’s caption interfaces are not a public API. Direct caption requests can
+return HTTP 200 with an empty body when a proof-of-origin token is missing. The
+extension also captures the player’s signed caption requests and judges success
+by whether actual words were returned. Captions may need to be enabled in
+YouTube before that request is made.
 
-## Releases
+Auto-captions can supply individual word offsets. A track with only phrase
+boundaries needs interpolation within each phrase, and cannot be perfectly
+aligned word by word. Videos without usable captions have no reader.
 
-Pushing a version tag builds a Chrome-Web-Store-ready zip and attaches it to a
-draft release:
+## Privacy
 
-```bash
-git tag v0.1.1 && git push origin v0.1.1
-```
+Captions and video requests stay with YouTube. Reading preferences use
+`chrome.storage.sync`; named presets use extension-local storage. There are no
+accounts, analytics, model providers or API keys in this version. See
+[PRIVACY.md](PRIVACY.md) for the storage and permissions details.
 
-The zip has `manifest.json` at its root and forward slashes throughout, and the
-workflow asserts both before attaching it — the two things a store upload is
-usually rejected for.
+## Credits and license
 
-`pnpm run package` builds the same zip locally.
+This project is a fork of
+[Ramonvdo/textreadsfast-youtube](https://github.com/Ramonvdo/textreadsfast-youtube).
+The reading core originated in
+[TextReadsFast](https://github.com/Ramonvdo/textreadsfast). Language Reactor is an
+inspiration for the simpler player workflow; this project is independent.
 
-## Security
-
-Found a vulnerability? Please report it privately — see [SECURITY.md](SECURITY.md).
-
-## License
-
-MIT — see [LICENSE](LICENSE). Bundled fonts are SIL Open Font License 1.1; see
-[public/fonts/LICENSES.md](public/fonts/LICENSES.md).
-
-Not affiliated with, endorsed by, or sponsored by YouTube or Google. See
+The original copyright notices remain in the [MIT license](LICENSE). See also
 [DISCLAIMER.md](DISCLAIMER.md).
