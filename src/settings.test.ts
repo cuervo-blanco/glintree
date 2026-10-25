@@ -12,6 +12,9 @@ it("keeps existing appearance and defaults new placement and focus preferences",
   expect(settings.horizontalPosition).toBe(50);
   expect(settings.verticalPosition).toBe(DEFAULTS.verticalPosition);
   expect(settings.focusMode).toBe(false);
+  expect(settings).not.toHaveProperty("boxHeight");
+  expect(settings.readingCentered).toBe(false);
+  expect(settings.focusReading).toBe(false);
   expect("readerInReadMode" in settings).toBe(false);
   expect("customBackground" in settings).toBe(false);
 });
@@ -61,4 +64,32 @@ it("keeps supported preferences while discarding removed or malformed values", (
 it("uses defaults for malformed settings containers", () => {
   for (const value of [null, undefined, [], 1, "settings"])
     expect(normalizeSettings(value)).toEqual(DEFAULTS);
+});
+
+it("keeps window size and paragraph viewing independent of the caption mode and font", () => {
+  expect(
+    normalizeSettings({
+      boxHeight: 35,
+      readingCentered: true,
+      focusReading: true,
+      mode: "highlight",
+      fontSize: 30,
+    }),
+  ).toMatchObject({
+    readingCentered: true,
+    focusReading: true,
+    mode: "highlight",
+    fontSize: 30,
+  });
+  expect(
+    normalizeSettings({
+      boxHeight: NaN,
+      focusReading: "yes",
+      readingCentered: "yes",
+    }),
+  ).toMatchObject({ focusReading: false, readingCentered: false });
+});
+
+it("discards saved manual height so captions follow the text again", () => {
+  expect(normalizeSettings({ boxHeight: 45 })).not.toHaveProperty("boxHeight");
 });
