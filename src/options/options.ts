@@ -24,6 +24,10 @@ import {
   type Settings,
 } from "../settings";
 
+document.getElementById("read-text")?.addEventListener("click", () => {
+  void chrome.tabs.create({ url: chrome.runtime.getURL("article.html") });
+});
+
 const SAMPLES: Record<string, Word[]> = Object.fromEntries(
   Object.entries({
     en: "Read at your own pace, follow the speaker and return to any word you want to practise.",
