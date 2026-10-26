@@ -2,13 +2,13 @@
   "manifest_version": 3,
   "name": "TextReadsFast for YouTube",
   "version": "0.1.0",
-  "description": "Learn languages and read faster with timed YouTube captions, romanization and a focus transcript.",
+  "description": "Read articles and YouTube captions with word focus, structured text, romanization and reading controls.",
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": ["*://*.youtube.com/*"],
   "content_scripts": [
     {
