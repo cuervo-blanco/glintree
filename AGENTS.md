@@ -4,16 +4,17 @@ Guidance for AI coding assistants working in this repository.
 
 ## Product
 
-A YouTube caption tool for language learning and faster reading. The player has
+A web article and YouTube caption tool for language learning and faster reading. The player has
 an activation switch, editable captions, Focus mode and a timed transcript panel.
 The toolbar icon opens settings directly. Reading mode adds book-like context
 inside Focus/fullscreen; the independent transcript sidebar stays available.
 There is no popup, profile gallery, old study dashboard, AI assistant, library,
 notes, export system or provider API key.
 
-YouTube supplies the transcript and timings up front. The current word is a
+YouTube supplies the transcript and timings up front. The current caption word is a
 lookup against `video.currentTime`. There is no transcription queue,
-backpressure or pacing engine. The WPM badge is informational only.
+backpressure or pacing engine for video. The WPM badge is informational only.
+Articles have a separate user-controlled WPM timer; never apply it to captions.
 
 ## Commands
 
@@ -37,6 +38,15 @@ prerequisite for this fork.
 
 - Do not edit or format `src/reader-core/` here. Keep changed browser behaviour
   in `src/content/`; the core still supplies the shared geometry and fonts.
+- Article extraction, temporary sessions and its reading page live in `src/article/`.
+  Use Readability on a cloned document and preserve structural blocks. Render
+  extracted text through DOM text nodes, never source HTML in the extension page.
+  Use temporary `activeTab`/`scripting` access from explicit context-menu actions;
+  do not add permanent all-site content scripts. The toolbar still opens settings.
+  Keep article text in `chrome.storage.session`, clean it up when its tab closes,
+  and keep article preferences in local storage. Never sync or upload article text.
+  The article WPM clock pauses when its tab is hidden. Its full document keeps
+  heading levels, lists, quotes and code; heading/body/code typography differs.
 - The manifest lives in `src/` and is copied to `dist/`. Keep the root manifest-free.
 - Content scripts are bundled as IIFEs: initialize through an async function,
   never top-level await.
@@ -54,6 +64,8 @@ prerequisite for this fork.
 - Mount inside `#movie_player`. Never move, detach, hide or zero-size the video
   to build Focus mode. An opaque layer covers the picture while presented video
   frames continue driving the reader.
+  The standalone article page mounts its own reader in its dedicated stage;
+  it never reuses or moves a YouTube player.
 - Focus and Reading mode use YouTube’s native fullscreen control. Leave the
   bottom playback strip clear of both the book and transcript. Do not cover
   native controls with the blackout. Transcript seeks preserve pause state.
