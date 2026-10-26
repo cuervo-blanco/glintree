@@ -77,7 +77,7 @@ export const THEME_LABELS: Record<ReaderTheme, string> = {
 };
 
 export interface Settings {
-  /** Master switch, so the extension can be left installed but idle. */
+  /** Caption switch; explicit article reading remains available independently. */
   enabled: boolean;
   mode: ReadingMode;
   theme: ReaderTheme;
