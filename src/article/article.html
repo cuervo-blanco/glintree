@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TextReadsFast — Read text</title>
+    <link rel="stylesheet" href="reader.css" />
+    <link rel="stylesheet" href="article.css" />
+  </head>
+  <body class="trf-article">
+    <header class="trf-article-toolbar" id="toolbar">
+      <div class="trf-article-brand">
+        <strong>TextReadsFast</strong><span>Articles &amp; text</span>
+      </div>
+      <div class="trf-article-actions">
+        <button id="previous" title="Previous paragraph or heading" disabled>
+          Previous
+        </button>
+        <button id="play" disabled>Play</button>
+        <button id="next" title="Next paragraph or heading" disabled>
+          Next
+        </button>
+        <label
+          >Pace
+          <input id="pace" type="range" min="80" max="1200" step="10" /><output
+            id="pace-value"
+          ></output
+        ></label>
+        <label
+          >Text size <input id="size" type="range" min="16" max="36" step="1"
+        /></label>
+        <label
+          >Font
+          <select id="font"></select
+        ></label>
+        <label><input id="word-focus" type="checkbox" /> Word focus</label>
+        <label><input id="follow" type="checkbox" /> Follow</label>
+        <label id="romanize-label" hidden
+          ><input id="romanize" type="checkbox" /> Romanized script</label
+        >
+        <button id="new-text">Paste text</button>
+        <button id="settings">Settings</button>
+      </div>
+    </header>
+    <section
+      id="stage"
+      class="trf-article-stage"
+      aria-label="Word focus reader"
+      hidden
+    ></section>
+    <main>
+      <p id="notice" role="status"></p>
+      <form id="editor" class="trf-article-editor" hidden>
+        <h1>Read text</h1>
+        <p>
+          Paste an article or your own text. Blank lines separate paragraphs; #
+          and ## mark headings.
+        </p>
+        <label
+          >Title
+          <input
+            id="text-title"
+            type="text"
+            value="Pasted text"
+            maxlength="300"
+        /></label>
+        <label
+          >Text
+          <textarea
+            id="text-input"
+            rows="14"
+            required
+            maxlength="1000000"
+          ></textarea>
+        </label>
+        <button type="submit">Open reader</button>
+        <button id="cancel-edit" type="button" hidden>Return to article</button>
+      </form>
+      <section id="document" hidden>
+        <header class="trf-article-meta">
+          <a id="source" target="_blank" rel="noopener noreferrer" hidden
+            >Open original page</a
+          >
+          <h1 id="article-title"></h1>
+          <p id="byline"></p>
+          <p>
+            <span id="summary"></span
+            ><output id="progress" aria-live="off"></output>
+          </p>
+        </header>
+        <article id="content" aria-label="Article text"></article>
+      </section>
+    </main>
+    <footer>
+      Space: play/pause · ← →: step through words · Click a word to continue
+      from there
+    </footer>
+    <script src="article.js"></script>
+  </body>
+</html>
