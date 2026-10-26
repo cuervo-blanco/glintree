@@ -1,10 +1,32 @@
 # TextReadsFast for YouTube
 
-A caption reader for language learning and faster reading. Follow a video one
-word at a time, read a caption line, or study its full transcript without
-leaving the player.
+A reader for web articles and YouTube captions. Read structured text at your own
+pace, follow a video one word at a time, or study its full transcript.
 
-## Use it
+## Read articles and text
+
+Right-click a webpage and choose **Read this page with TextReadsFast**. To read
+only a section, select it first and choose **Read selected text with TextReadsFast**.
+The extension opens a reading tab with the article's headings, paragraphs,
+lists, quotations and code preserved. Headings use a bold sans-serif face,
+paragraphs use the chosen reading font, and code uses monospace.
+
+Press **Play** to advance at your chosen WPM, or read normally. **Word focus**
+adds the familiar RSVP reader above the article. Change font or text size,
+step between paragraphs, click a word to continue there, and disable **Follow**
+to browse independently. Space plays or pauses; left/right arrows step words.
+Playback pauses when the reading tab is hidden.
+
+The settings page also has **Read or paste text**. Pasted text supports blank
+lines for paragraphs, Markdown headings (`#`, `##`), lists, quotes and fenced code.
+Hindi/Bengali romanization is available when those scripts occur.
+
+Article extraction runs locally only when requested. The original page stays
+unchanged. Article text and position remain available while the reading tab is
+open, including reloads, and are removed when it closes. Pages without readable
+article text offer a paste fallback. The toolbar icon continues to open settings.
+
+## Read YouTube captions
 
 1. Turn **TRF** on or off in YouTube’s player controls.
 2. Click the captions to open their settings. Click them again, click outside,
@@ -86,7 +108,7 @@ Romanization happens locally and follows spelling, including written inherent
 vowels: भारत becomes _bhārata_, and বাংলা becomes _bāṁlā_. It does not infer
 pronunciation. The original words and timings remain intact.
 
-The source track supplies the timing. Automatically translated captions cannot
+For YouTube, the source track supplies the timing. Automatically translated captions cannot
 provide word-for-word alignment with speech in a different language, so the
 reader uses the selected original track rather than silently adopting a
 translation being shown by YouTube.
@@ -139,9 +161,13 @@ src/
 
 ## Timing and limitations
 
-Every displayed word is looked up against `video.currentTime`. Pausing,
+Every YouTube word is looked up against `video.currentTime`. Pausing,
 seeking and playback speed therefore use the video clock, with no transcription
 or artificial reading queue.
+
+Articles use a separate, user-controlled WPM timer, with short pauses at
+punctuation and paragraph/heading boundaries. That timer never changes how
+YouTube captions are timed.
 
 YouTube’s caption interfaces are not a public API. Direct caption requests can
 return HTTP 200 with an empty body when a proof-of-origin token is missing. The
@@ -160,6 +186,11 @@ Captions and video requests stay with YouTube. Reading preferences use
 accounts, analytics, model providers or API keys in this version. See
 [PRIVACY.md](PRIVACY.md) for the storage and permissions details.
 
+Article text stays in browser-session storage and is never uploaded. Article
+preferences stay in extension-local storage. Temporary `activeTab` access and
+`scripting` are used for an explicit page/selection action, rather than granting
+permanent access to all websites.
+
 ## Credits and license
 
 This project is a fork of
@@ -170,3 +201,6 @@ inspiration for the simpler player workflow; this project is independent.
 
 The original copyright notices remain in the [MIT license](LICENSE). See also
 [DISCLAIMER.md](DISCLAIMER.md).
+
+Article extraction uses [Mozilla Readability](https://github.com/mozilla/readability).
+Its license is included as `READABILITY-LICENSE.md` in the built package.
