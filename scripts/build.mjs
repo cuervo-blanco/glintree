@@ -26,6 +26,8 @@ const entries = {
   inject: "src/page/inject.ts",
   options: "src/options/options.ts",
   background: "src/background/index.ts",
+  extract: "src/article/extract.ts",
+  article: "src/article/index.ts",
   ...(dev
     ? {
         modes: "src/dev/modes.ts",
@@ -72,6 +74,18 @@ async function copyStatic() {
   await cp(
     resolve(root, "src/options/options.html"),
     resolve(outdir, "options.html"),
+  );
+  await cp(
+    resolve(root, "src/article/article.html"),
+    resolve(outdir, "article.html"),
+  );
+  await cp(
+    resolve(root, "src/article/article.css"),
+    resolve(outdir, "article.css"),
+  );
+  await cp(
+    resolve(root, "node_modules/@mozilla/readability/LICENSE.md"),
+    resolve(outdir, "READABILITY-LICENSE.md"),
   );
   if (dev) {
     // Emitted at the dist root on purpose: `buildCss` rewrites font urls to be
