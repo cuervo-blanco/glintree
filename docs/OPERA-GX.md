@@ -13,6 +13,10 @@ not need Node.js or pnpm.
 6. Open or refresh a YouTube video, enable its captions if needed, and turn on
    the **TRF** switch in the player.
 
+To read an article, right-click a webpage and choose **Read this page with
+TextReadsFast**. Selected text has its own reading action. **Read or paste text**
+is also available from the extension's settings page.
+
 These are Opera's documented steps for loading an unpacked extension:
 [Testing and debugging extensions](https://help.opera.com/en/extensions/testing/).
 
