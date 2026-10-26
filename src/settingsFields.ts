@@ -53,8 +53,8 @@ export const FIELDS: Field[] = [
     kind: "toggle",
     key: "enabled",
     group: "reading",
-    label: "Enabled",
-    help: "Turn the reader off without uninstalling.",
+    label: "Caption reader enabled",
+    help: "Turn the YouTube caption reader off without uninstalling.",
   },
   {
     kind: "select",
