@@ -1,0 +1,221 @@
+.trf-article {
+  --trf-article-text: #e8e6e3;
+  --trf-article-faded: #9b9c9f;
+  --trf-article-accent: #e4572e;
+  --trf-article-font: "Literata", Georgia, serif;
+  --trf-article-size: 22px;
+  --trf-toolbar-height: 110px;
+  margin: 0;
+  background: #111214;
+  color: var(--trf-article-text);
+  font:
+    400 15px/1.5 "Geist",
+    system-ui,
+    sans-serif;
+  color-scheme: dark;
+}
+.trf-article * {
+  box-sizing: border-box;
+}
+.trf-article [hidden] {
+  display: none !important;
+}
+.trf-article button,
+.trf-article select,
+.trf-article input,
+.trf-article textarea {
+  font: inherit;
+  accent-color: var(--trf-article-accent);
+}
+.trf-article button,
+.trf-article select,
+.trf-article input[type="text"],
+.trf-article textarea {
+  color: inherit;
+  border: 1px solid #53565c;
+  border-radius: 3px;
+  padding: 5px 9px;
+  background: #1b1d20;
+}
+.trf-article button {
+  cursor: pointer;
+}
+.trf-article button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.trf-article a {
+  color: var(--trf-article-accent);
+}
+.trf-article :focus-visible {
+  outline: 2px solid var(--trf-article-accent);
+  outline-offset: 3px;
+}
+.trf-article-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  padding: 12px 24px;
+  border-bottom: 1px solid #35373b;
+  background: #111214;
+}
+.trf-article-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.trf-article-brand span {
+  color: var(--trf-article-faded);
+  font-size: 13px;
+}
+.trf-article-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.trf-article-actions label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.trf-article-actions input[type="range"] {
+  width: 88px;
+}
+.trf-article-actions select {
+  max-width: 155px;
+}
+.trf-article-actions output {
+  min-width: 70px;
+  font-variant-numeric: tabular-nums;
+}
+.trf-article-stage {
+  position: sticky;
+  top: var(--trf-toolbar-height);
+  z-index: 70;
+  height: 140px;
+  background: #08090a;
+  border-bottom: 1px solid #35373b;
+}
+.trf-article-stage .trf-reader {
+  top: 50%;
+  left: 50%;
+  bottom: auto;
+  width: 96%;
+  max-width: 96%;
+  padding: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+}
+.trf-article main {
+  max-width: 78ch;
+  margin: 32px auto 80px;
+  padding: 0 28px;
+}
+.trf-article-meta {
+  color: var(--trf-article-faded);
+  margin-bottom: 32px;
+}
+.trf-article-meta p {
+  margin: 8px 0;
+}
+.trf-article-meta output {
+  margin-left: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.trf-article #content {
+  font-family: var(--trf-article-font);
+  font-size: var(--trf-article-size);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.trf-article :is(#content, .trf-article-meta) :is(h1, h2, h3, h4, h5, h6) {
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--trf-article-text);
+  margin: 1.5em 0 0.6em;
+}
+.trf-article #content h1,
+.trf-article-meta h1 {
+  font-size: 2.1em;
+}
+.trf-article #content h2 {
+  font-size: 1.65em;
+}
+.trf-article #content h3 {
+  font-size: 1.35em;
+}
+.trf-article #content :is(h4, h5, h6) {
+  font-size: 1.1em;
+}
+.trf-article #content p {
+  margin: 0 0 1.2em;
+}
+.trf-article #content blockquote {
+  margin: 1.5em 0;
+  padding: 0 0 0 1em;
+  border-left: 3px solid var(--trf-article-accent);
+}
+.trf-article #content pre {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding: 18px;
+  background: #1b1d20;
+  border: 1px solid #35373b;
+}
+.trf-article #content [data-kind="caption"] {
+  font-family: "Geist", system-ui, sans-serif;
+  font-size: 0.75em;
+  color: var(--trf-article-faded);
+}
+.trf-article #content li {
+  margin-bottom: 0.5em;
+}
+.trf-article-word {
+  cursor: pointer;
+}
+.trf-article-current {
+  color: var(--trf-article-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.trf-article-editor label {
+  display: block;
+  margin: 16px 0;
+}
+.trf-article-editor input,
+.trf-article-editor textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+.trf-article-editor textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+.trf-article #notice:not(:empty) {
+  border-left: 3px solid var(--trf-article-accent);
+  padding: 10px 16px;
+}
+.trf-article footer {
+  padding: 24px;
+  text-align: center;
+  color: var(--trf-article-faded);
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .trf-article-toolbar {
+    padding: 10px 14px;
+  }
+  .trf-article main {
+    padding: 0 18px;
+  }
+  .trf-article-stage {
+    height: 110px;
+  }
+}
