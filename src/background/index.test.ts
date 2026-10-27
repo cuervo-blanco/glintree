@@ -23,6 +23,7 @@ beforeEach(() => {
     action: { onClicked: { addListener: action } },
     runtime: {
       onInstalled: { addListener: installed },
+      onMessage: { addListener: vi.fn() },
       openOptionsPage: options,
     },
     contextMenus: {
