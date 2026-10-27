@@ -10,9 +10,9 @@ export class PlayerToggle {
     this.button.type = "button";
     this.button.className = "ytp-button trf-player-toggle";
     this.button.setAttribute("role", "switch");
-    this.button.setAttribute("aria-label", "TextReadsFast captions");
+    this.button.setAttribute("aria-label", "Glintree captions");
     const label = document.createElement("span");
-    label.textContent = "TRF";
+    label.textContent = "G·";
     const track = document.createElement("span");
     track.className = "trf-switch-track";
     track.setAttribute("aria-hidden", "true");
@@ -48,7 +48,7 @@ export class PlayerToggle {
 
   apply(enabled: boolean): void {
     this.button.setAttribute("aria-checked", String(enabled));
-    this.button.title = `${enabled ? "Turn off" : "Turn on"} TextReadsFast captions`;
+    this.button.title = `${enabled ? "Turn off" : "Turn on"} Glintree captions`;
   }
 
   destroy(): void {
