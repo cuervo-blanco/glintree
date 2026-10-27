@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="trf-options">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TextReadsFast settings</title>
+    <title>Glintree settings</title>
     <link rel="stylesheet" href="reader.css" />
     <style>
       :root {
         color-scheme: dark;
-        --page-bg: #16181b;
+        --page-bg: #101b21;
         --page-text: #e8e6e3;
         --page-muted: #a0a5ad;
         --page-edge: #34383e;
-        --page-accent: #e4572e;
+        --page-accent: var(--trf-brand-accent);
       }
       * {
         box-sizing: border-box;
@@ -37,6 +37,16 @@
       h2 {
         margin: 28px 0 10px;
         font-size: 15px;
+      }
+      .trf-workspace-nav {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+      .trf-workspace-nav a {
+        color: var(--page-accent);
       }
       .lede,
       .hint {
@@ -183,7 +193,11 @@
   </head>
   <body>
     <main>
-      <h1>TextReadsFast</h1>
+      <nav class="trf-workspace-nav">
+        <a href="learn.html">G· Glintree / Learning collection</a
+        ><a href="article.html">Read text</a>
+      </nav>
+      <h1>Reading settings</h1>
       <p><button id="read-text" type="button">Read or paste text</button></p>
       <p class="lede">
         Read faster or practise a language with YouTube captions. Click captions
@@ -192,7 +206,7 @@
       </p>
       <p class="hint">
         For articles, right-click a webpage and choose Read this page with
-        TextReadsFast. Select text first to read only that section.
+        Glintree. Select text first to read only that section.
       </p>
       <div id="preview-host" aria-label="Live caption preview"></div>
       <p class="hint">
