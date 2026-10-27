@@ -1,3 +1,5 @@
+import { languageOptions } from "../learning/languages";
+import { LearningReader, selectedWords } from "../learning/reader";
 import { ReaderOverlay } from "../content/overlay";
 import {
   FONT_LABELS,
@@ -47,6 +49,7 @@ let words: ArticleWord[] = [];
 let player: ArticlePlayback | null = null;
 let view: ArticleView | null = null;
 let overlay: ReaderOverlay;
+let learning: LearningReader | null = null;
 let id = new URLSearchParams(location.search).get("id");
 let lastRole = "";
 let saveTimer = 0;
@@ -169,11 +172,26 @@ function openDocument(next: ArticleDocument, index = 0): void {
   article = next;
   words = articleWords(next);
   view = new ArticleView(content, next, words);
+  learning?.destroy();
+  languageOptions(
+    element<HTMLSelectElement>("study-language"),
+    next.language || "und",
+  );
+  learning = new LearningReader(document.body, next.language || "und");
+  learning.attach(
+    content,
+    words.map(({ word }) => word.text),
+    new Set(
+      words.flatMap((word, index) =>
+        index && words[index - 1].block !== word.block ? [index] : [],
+      ),
+    ),
+  );
   player = new ArticlePlayback(words, preferences.wpm, paint);
   documentPane.hidden = false;
   editor.hidden = true;
   notice.textContent = "";
-  document.title = `${next.title} — TextReadsFast`;
+  document.title = `${next.title} — Glintree`;
   const title = element<HTMLElement>("article-title");
   title.textContent = next.title;
   title.hidden =
@@ -221,6 +239,7 @@ function skip(direction: number): void {
   player.seek(index < 0 ? words.length - 1 : index);
 }
 
+languageOptions(element<HTMLSelectElement>("study-language"), "und");
 for (const [value, label] of Object.entries(FONT_LABELS))
   font.add(new Option(label, value));
 play.addEventListener("click", () =>
@@ -241,7 +260,49 @@ content.addEventListener("click", (event) => {
     event.target instanceof Element
       ? event.target.closest<HTMLElement>("[data-word]")
       : null;
-  if (word) player?.seek(Number(word.dataset.word));
+  if (!word) return;
+  const index = Number(word.dataset.word);
+  if (element<HTMLInputElement>("study-words").checked && !event.altKey) {
+    player?.pause();
+    captureWord(word.textContent ?? "", index, word);
+  } else player?.seek(index);
+});
+
+function captureWord(term: string, index: number, target?: HTMLElement): void {
+  if (!article || !words[index]) return;
+  const sourceTerm = target ? words[index].word.text : term;
+  learning?.capture(
+    sourceTerm,
+    {
+      title: article.title,
+      url: article.url,
+      context: article.blocks[words[index].block].text,
+    },
+    target,
+  );
+}
+element("study-language").addEventListener("change", () => {
+  learning?.setLanguage(element<HTMLSelectElement>("study-language").value);
+});
+element("learn-selection").addEventListener("click", () => {
+  const selected = selectedWords(content);
+  if (!selected) {
+    notice.textContent =
+      "Select a word, phrase or concept in the article first.";
+    return;
+  }
+  player?.pause();
+  const first = words[selected.start],
+    last = words[selected.end];
+  if (!article || !first || !last) return;
+  const term =
+    first.block === last.block
+      ? article.blocks[first.block].text.slice(first.start, last.end)
+      : words
+          .slice(selected.start, selected.end + 1)
+          .map(({ word }) => word.text)
+          .join(" ");
+  captureWord(term, selected.start);
 });
 
 for (const control of [pace, size, font, focus, follow, romanize]) {
@@ -315,6 +376,7 @@ document.fonts.addEventListener("loadingdone", () => {
 window.addEventListener("pagehide", () => {
   player?.pause();
   player?.destroy();
+  learning?.destroy();
   savePreferences();
 });
 const resize = new ResizeObserver(() =>
