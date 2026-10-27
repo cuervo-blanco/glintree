@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glintree · Learning collection</title>
+    <link rel="stylesheet" href="reader.css" />
+    <link rel="stylesheet" href="learn.css" />
+  </head>
+  <body class="trf-learning-page">
+    <header class="trf-learning-masthead">
+      <a class="trf-learning-brand" href="learn.html"
+        ><span aria-hidden="true">G·</span> Glintree</a
+      >
+      <p>Keep something from what you read and watch.</p>
+      <nav aria-label="Workspace">
+        <a href="article.html">Read text</a
+        ><a
+          href="https://www.youtube.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Watch YouTube ↗</a
+        ><a href="options.html">Settings</a>
+      </nav>
+    </header>
+    <main>
+      <div class="trf-learning-intro">
+        <div>
+          <p class="trf-learning-eyebrow">Your learning collection</p>
+          <h1>Words. Ideas. Connections.</h1>
+          <p>Capture in context. Revisit when you want to remember.</p>
+        </div>
+        <button id="new-item">+ Add an item</button>
+      </div>
+      <p id="stats" class="trf-learning-stats"></p>
+      <nav class="trf-learning-tabs" aria-label="Learning activities">
+        <button data-tab="collection" aria-pressed="true">Collection</button
+        ><button data-tab="review" aria-pressed="false">Review cards</button
+        ><button data-tab="import" aria-pressed="false">Import a list</button>
+      </nav>
+      <p id="notice" role="status"></p>
+      <section id="collection" aria-label="Saved learning items">
+        <div class="trf-learning-filters">
+          <label
+            >Search<input
+              id="search"
+              type="search"
+              placeholder="A word, meaning, or topic" /></label
+          ><label
+            >Language<select id="language">
+              <option value="">All languages</option>
+            </select></label
+          ><label
+            >List / topic<select id="dataset">
+              <option value="">All lists</option>
+            </select></label
+          ><label
+            >Progress<select id="status">
+              <option value="">All progress</option>
+              <option>new</option>
+              <option>learning</option>
+              <option>known</option>
+            </select></label
+          >
+        </div>
+        <p class="trf-learning-help">
+          List colours appear as underlines. Amber = new · Teal = learning · No
+          fill = known. Current-word highlighting stays visible.
+        </p>
+        <div id="items" class="trf-learning-items"></div>
+        <p id="count" class="trf-learning-help"></p>
+        <div class="trf-learning-backup">
+          <button id="export">Download collection backup</button
+          ><label
+            >Restore backup<input
+              id="restore"
+              type="file"
+              accept=".json,application/json"
+          /></label>
+        </div>
+      </section>
+      <section id="review" aria-label="Flashcard review" hidden>
+        <p class="trf-learning-help">
+          Cards use your saved meanings and examples. Blank meanings stay in the
+          collection until you add an explanation. Known items leave the review
+          queue.
+        </p>
+        <div id="card" class="trf-learning-card"></div>
+      </section>
+      <section id="import" hidden>
+        <h2>Bring your own word or concept list</h2>
+        <p>
+          Import an HSK list, vocabulary from a class, or concepts from a course
+          such as CCNA. A list name and colour keep related items together.
+        </p>
+        <form id="import-form">
+          <div class="trf-learning-filters">
+            <label
+              >List / topic name<input
+                id="list-name"
+                required
+                maxlength="60"
+                placeholder="HSK4 or CCNA" /></label
+            ><label>Language<select id="list-language"></select></label
+            ><label
+              >Type<select id="list-kind">
+                <option>word</option>
+                <option>phrase</option>
+                <option>concept</option>
+              </select></label
+            ><label
+              >List colour<input id="list-color" type="color" value="#7bc5b5"
+            /></label>
+          </div>
+          <label class="trf-learning-file"
+            >CSV, TSV, TXT or JSON<input
+              id="list-file"
+              required
+              type="file"
+              accept=".csv,.tsv,.txt,.json,text/csv,text/plain,application/json"
+          /></label>
+          <p class="trf-learning-help">
+            CSV/TSV headers: term, meaning, examples, language, kind. Or one
+            term per line. JSON: an array of strings or objects with these
+            fields. UTF-8, up to 10,000 rows. Use language code und for
+            cross-language concepts.
+          </p>
+          <pre>
+term,meaning,examples
+学习,to study,我在学习中文。</pre>
+          <button type="submit">Preview import</button
+          ><button id="confirm-import" type="button" disabled>
+            Import items
+          </button>
+        </form>
+        <div id="import-preview"></div>
+        <p class="trf-learning-help">
+          Existing meanings, review history and progress are kept. Imported
+          memberships are added. No bundled HSK list or automatic dictionary is
+          included yet.
+        </p>
+      </section>
+    </main>
+    <footer class="trf-learning-bottom">
+      Stored in this browser. No account, upload, or automatic translation.
+      Learn a little. Keep it growing.
+    </footer>
+    <script src="learn.js"></script>
+  </body>
+</html>
