@@ -176,7 +176,7 @@ if (names.some((n) => n.includes("\\"))) {
   process.exit(1);
 }
 
-const out = join(root, `textreadsfast-youtube-v${manifest.version}.zip`);
+const out = join(root, `${pkg.name}-v${manifest.version}.zip`);
 const zip = build(files);
 writeFileSync(out, zip);
 
