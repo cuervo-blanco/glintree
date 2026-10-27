@@ -1,19 +1,58 @@
-# TextReadsFast for YouTube
+# Glintree
 
-A reader for web articles and YouTube captions. Read structured text at your own
-pace, follow a video one word at a time, or study its full transcript.
+**Learn a little. Keep it growing.**
+
+Learn languages, words and concepts from articles, videos and the things you enjoy.
+Read at your own pace, capture something useful in context, and revisit it later.
+Glintree is an independent product built on the TextReadsFast reading foundation.
+
+## Keep what you learn
+
+Open **Learning collection** from settings to add items, import a list, or review
+cards. The extension icon still opens settings directly, with no popup.
+
+- Click a word in an article, YouTube's transcript, or Reading mode to inspect
+  and save it. **Study words** enables these actions; turn it off, or Alt-click,
+  to seek through the text. Video timestamps always seek. **Learn current word**
+  is also available in the player. Capture pauses reading/playback.
+- Select a phrase or a technical concept, then choose **Save selection**. Change
+  its type to **concept** for something such as a routing protocol. Use a
+  language code (`en`, `zh`, `hi`, `bn`), or `und` for a concept shared across
+  languages. The study-language field controls matching for the current reader.
+- Add a meaning, examples, lists/topics, and new / learning / known progress.
+  Saved source context includes a link and, for YouTube, the video time.
+- Import a UTF-8 CSV, TSV, TXT or JSON list with a name and colour, such as HSK4
+  or CCNA. Preview it before importing. CSV/TSV accepts `term,meaning,examples,
+language,kind`; a plain list can contain one term per line. JSON accepts an
+  array of strings or objects. Imports preserve existing personal meanings and
+  review history. Use up to 10,000 rows per import.
+- Matching words/phrases receive the list's underline colour and a progress fill:
+  amber for new, teal for learning, and no fill for known. The current reading
+  word and focal letter keep their normal highlighting. Items in several lists
+  use the first list’s underline colour. Matching uses exact
+  normalized terms, not automatic inflection or dictionary lookup.
+- Every item with a meaning is ready for flashcard review. Reveal its meaning,
+  choose **Again** or **Remembered**, or mark it **Known**. The first successful
+  review schedules one day ahead; subsequent intervals double, up to 180 days.
+  Again schedules ten minutes ahead. Known items leave the review queue.
+
+Definitions and examples are currently entered by you or supplied in your import.
+There is no bundled HSK dataset or automatic dictionary yet. The collection stays
+in this browser; download a JSON backup and merge it back with **Restore backup**.
+See [the product direction](docs/PRODUCT.md) for planned dictionary, word-family
+and concept-learning work.
 
 ## Read articles and text
 
-Right-click a webpage and choose **Read this page with TextReadsFast**. To read
-only a section, select it first and choose **Read selected text with TextReadsFast**.
+Right-click a webpage and choose **Read this page with Glintree**. To read
+only a section, select it first and choose **Read selected text with Glintree**.
 The extension opens a reading tab with the article's headings, paragraphs,
 lists, quotations and code preserved. Headings use a bold sans-serif face,
 paragraphs use the chosen reading font, and code uses monospace.
 
 Press **Play** to advance at your chosen WPM, or read normally. **Word focus**
 adds the familiar RSVP reader above the article. Change font or text size,
-step between paragraphs, click a word to continue there, and disable **Follow**
+step between paragraphs, turn **Study words** off to click-seek, and disable **Follow**
 to browse independently. Space plays or pauses; left/right arrows step words.
 Playback pauses when the reading tab is hidden.
 
@@ -28,7 +67,7 @@ article text offer a paste fallback. The toolbar icon continues to open settings
 
 ## Read YouTube captions
 
-1. Turn **TRF** on or off in YouTube’s player controls.
+1. Turn **G·** on or off in YouTube’s player controls.
 2. Click the captions to open their settings. Click them again, click outside,
    or press Escape to close the panel.
 3. Drag the captions to move them. Drag the arrow outside either side to change the caption
@@ -82,20 +121,21 @@ letter. Excerpt refreshes retain existing line breaks; a 60ms context fade
 softens line changes without moving or fading the focal word. Reduced-motion
 preferences disable the fade. Turn Centre word
 off to return to the stable paragraph view. Reading mode and the sidebar leave
-a clear strip for playback controls and seeking. Click the text to open
-appearance settings in a left side panel; the transcript stays available on the
+a clear strip for playback controls and seeking. Click the caption padding or
+press Enter on the reading area to open appearance settings on the left; the transcript stays available on the
 right. The arrows and Reading mode’s focal letter share the accent colour
-(orange by default). Turn Reading mode off to return
+(teal by default). Turn Reading mode off to return
 to the selected caption mode. **Show video** leaves both Focus and Reading mode.
 
-**Transcript** opens a side panel containing the whole caption track. Click a
-word or timestamp to seek to it, including while paused. The current word is
+**Transcript** opens a side panel containing the whole caption track. With
+**Study words** enabled, words open the capture panel. Timestamps always seek,
+including while paused. Turn Study words off to seek by clicking words. The current word is
 marked as the video plays. Scroll to browse independently, then use **Follow**
 to return to the current word. The panel can be opened or closed independently
 of fullscreen.
 
-The former study dashboard, assistant, notes, library and export system have
-been removed. Reading mode and the transcript stay inside the existing player.
+Reading mode and the transcript stay inside the existing player. The new
+learning collection is separate from the removed legacy study dashboard.
 
 ## Languages and romanization
 
@@ -153,7 +193,9 @@ src/
   content/       caption parsing, reader, editing controls, focus and transcript
   page/          signed caption capture in YouTube’s page context
   options/       settings, preview and saved presets
-  background/    opens settings when the toolbar icon is clicked
+  background/    explicit page reading and serialized collection writes
+  article/       structured extraction, temporary sessions and text pacing
+  learning/      collection, imports, source capture, matching and review
   reader-core/   shared reading geometry and fonts
   presets.ts     user-created presets
   settings.ts    preferences and defaults
@@ -186,6 +228,8 @@ Captions and video requests stay with YouTube. Reading preferences use
 accounts, analytics, model providers or API keys in this version. See
 [PRIVACY.md](PRIVACY.md) for the storage and permissions details.
 
+Saved learning items, their source excerpts, lists and review history stay in
+extension-local storage. Backups are downloaded only when requested.
 Article text stays in browser-session storage and is never uploaded. Article
 preferences stay in extension-local storage. Temporary `activeTab` access and
 `scripting` are used for an explicit page/selection action, rather than granting
