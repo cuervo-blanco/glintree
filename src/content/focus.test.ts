@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { classify } from "../reader-core/words";
 import type { TimedWord } from "./captions";
 import { FocusView } from "./focus";
+import { CollectionEditor, EMPTY_COLLECTION } from "../learning/model";
+import { learningDraft } from "../learning/panel";
 
 const words: TimedWord[] = [
   { word: classify("um"), startMs: 0, endMs: 1000 },
@@ -17,7 +19,7 @@ const setFullscreen = (element: Element | null): void => {
   document.dispatchEvent(new Event("fullscreenchange"));
 };
 
-function mount(player = document.createElement("div")) {
+function mount(player = document.createElement("div"), language?: string) {
   const video = document.createElement("video");
   const reader = document.createElement("div");
   reader.className = "trf-reader";
@@ -44,7 +46,11 @@ function mount(player = document.createElement("div")) {
     };
     view.apply(settings);
   });
-  const view = new FocusView(player, video, words, { onCenter, onReading });
+  const view = new FocusView(player, video, words, {
+    onCenter,
+    onReading,
+    language,
+  });
   views.push(view);
   player.append(view.controls);
   view.apply(settings);
@@ -99,6 +105,61 @@ afterEach(() => {
 });
 
 describe("focus transcript", () => {
+  it("captures native words and longer concepts from romanized text while keeping seek gestures available", async () => {
+    const collection = structuredClone(EMPTY_COLLECTION);
+    new CollectionEditor(collection).save({
+      ...learningDraft("नमस्ते বাংলা", "und"),
+      kind: "concept",
+      meaning: "An existing concept",
+    });
+    vi.stubGlobal("chrome", {
+      runtime: { getURL: (path: string) => `chrome-extension://test/${path}` },
+      storage: {
+        local: { get: async () => ({ learningCollectionV1: collection }) },
+        onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
+      },
+    });
+    const { view, button, entries, player, video, book } = mount(
+      undefined,
+      "hi",
+    );
+    vi.spyOn(video, "pause").mockImplementation(() => {});
+    view.apply({ focusMode: true, focusReading: true, romanize: true });
+    view.update(1400);
+    button("Transcript").click();
+    await vi.waitFor(() =>
+      expect(entries()[1].dataset.learningId).toBeDefined(),
+    );
+    entries()[1].click();
+    const term = () =>
+      player.querySelector<HTMLInputElement>(
+        '.trf-learning-panel [name="term"]',
+      )!.value;
+    expect(term()).toBe("नमस्ते বাংলা");
+    button("Close learning item").click();
+    const range = document.createRange();
+    range.setStart(entries()[1].firstChild!, 0);
+    range.setEnd(entries()[3].firstChild!, entries()[3].textContent!.length);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    button("Save selection").click();
+    expect(term()).toBe("नमस्ते বাংলা world");
+    expect(
+      player.querySelector<HTMLTextAreaElement>(
+        '.trf-learning-panel [name="meaning"]',
+      )!.value,
+    ).toBe("");
+    button("Close learning item").click();
+    player.querySelector<HTMLButtonElement>(".trf-transcript-time")!.click();
+    expect(video.currentTime).toBe(0);
+    window.getSelection()!.removeAllRanges();
+    book
+      .querySelector<HTMLElement>('[data-word="2"]')!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
+    expect(video.currentTime).toBe(2.7);
+    expect(video.paused).toBe(true);
+    expect(video.pause).toHaveBeenCalled();
+  });
   it("builds the complete native transcript only when opened, including fillers", () => {
     const { view, button, panel, entries } = mount();
     expect(entries()).toHaveLength(0);
