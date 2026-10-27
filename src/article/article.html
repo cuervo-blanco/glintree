@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TextReadsFast — Read text</title>
+    <title>Glintree — Read text</title>
     <link rel="stylesheet" href="reader.css" />
     <link rel="stylesheet" href="article.css" />
   </head>
   <body class="trf-article">
     <header class="trf-article-toolbar" id="toolbar">
       <div class="trf-article-brand">
-        <strong>TextReadsFast</strong><span>Articles &amp; text</span>
+        <strong>Glintree</strong><span>Articles &amp; text</span>
       </div>
       <div class="trf-article-actions">
         <button id="previous" title="Previous paragraph or heading" disabled>
@@ -38,6 +38,15 @@
         <label id="romanize-label" hidden
           ><input id="romanize" type="checkbox" /> Romanized script</label
         >
+        <label
+          >Study language
+          <select id="study-language"></select
+        ></label>
+        <label
+          ><input id="study-words" type="checkbox" checked /> Study words</label
+        >
+        <button id="learn-selection">Save selection</button>
+        <a href="learn.html" target="_blank">Collection &amp; review ↗</a>
         <button id="new-text">Paste text</button>
         <button id="settings">Settings</button>
       </div>
@@ -93,7 +102,8 @@
     </main>
     <footer>
       Space: play/pause · ← →: step through words · Click a word to continue
-      from there
+      from there (with Study words off). With Study words on, click to inspect a
+      word or select a phrase or concept and choose Save selection.
     </footer>
     <script src="article.js"></script>
   </body>
