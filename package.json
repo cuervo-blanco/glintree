@@ -1,9 +1,9 @@
 {
-  "name": "textreadsfast-youtube",
+  "name": "glintree",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Read articles and YouTube captions for language learning and faster reading",
+  "description": "Learn languages, words and concepts from articles and YouTube",
   "scripts": {
     "build": "node scripts/build.mjs",
     "package": "node scripts/build.mjs && node scripts/package.mjs",
