@@ -47,7 +47,7 @@ describe("player toggle", () => {
     );
     expect(button.type).toBe("button");
     expect(button.getAttribute("role")).toBe("switch");
-    expect(button.getAttribute("aria-label")).toBe("TextReadsFast captions");
+    expect(button.getAttribute("aria-label")).toBe("Glintree captions");
   });
 
   it("floats until a late control bar appears, then moves into it", async () => {
@@ -80,10 +80,10 @@ describe("player toggle", () => {
     const { player, button, toggle, onToggle } = mount();
     toggle.apply(true);
     expect(button.getAttribute("aria-checked")).toBe("true");
-    expect(button.title).toBe("Turn off TextReadsFast captions");
+    expect(button.title).toBe("Turn off Glintree captions");
     toggle.apply(false);
     expect(button.getAttribute("aria-checked")).toBe("false");
-    expect(button.title).toBe("Turn on TextReadsFast captions");
+    expect(button.title).toBe("Turn on Glintree captions");
     const playback = vi.fn();
     for (const type of [
       "click",
