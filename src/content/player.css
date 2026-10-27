@@ -31,11 +31,12 @@
 }
 
 .trf-player-toggle[aria-checked="true"] .trf-switch-track {
-  background: #b54b32;
+  background: var(--trf-brand-accent);
 }
 
 .trf-player-toggle[aria-checked="true"] .trf-switch-track::after {
   left: 13px;
+  background: #101b21;
 }
 
 .trf-player-toggle.trf-player-toggle--floating {
@@ -49,6 +50,6 @@
 }
 
 .trf-player-toggle:focus-visible {
-  outline: 2px solid #eee;
+  outline: 2px solid var(--trf-brand-accent);
   outline-offset: -2px;
 }
