@@ -1,3 +1,5 @@
+import { languageOptions } from "../learning/languages";
+import { LearningReader, selectedWords } from "../learning/reader";
 import { wordAt, type TimedWord } from "./captions";
 import { buildLines } from "./lines";
 import { romanize } from "./romanize";
@@ -12,6 +14,8 @@ interface FocusSettings {
 
 export class FocusView {
   readonly controls = document.createElement("div");
+  private learning: LearningReader | null = null;
+  private studying = true;
   private transcript = document.createElement("button");
   private reading = document.createElement("button");
   private book: BookView;
@@ -36,12 +40,47 @@ export class FocusView {
     private options: {
       onCenter: (enabled: boolean) => void;
       onReading: (enabled: boolean) => void;
+      language?: string;
     },
   ) {
     const reader = player.querySelector<HTMLElement>(".trf-reader")!;
-    this.book = new BookView(reader, words, () =>
-      reader.querySelector<HTMLElement>(".trf-stage")?.click(),
+    if (options.language)
+      this.learning = new LearningReader(player, options.language);
+    this.book = new BookView(
+      reader,
+      words,
+      () => reader.querySelector<HTMLElement>(".trf-stage")?.click(),
+      () =>
+        this.learning?.attach(
+          this.book.root,
+          this.words.map(({ word }) => word.text),
+        ),
     );
+    this.book.root.addEventListener(
+      "click",
+      (event) => {
+        if (!this.learning || window.getSelection()?.isCollapsed === false)
+          return;
+        const target =
+          event.target instanceof Element
+            ? event.target.closest<HTMLElement>("[data-word]")
+            : null;
+        if (!target) return;
+        event.stopImmediatePropagation();
+        if (this.studying && !event.altKey)
+          this.capture(Number(target.dataset.word), undefined, target);
+        else this.seek(Number(target.dataset.word));
+      },
+      { capture: true },
+    );
+    if (this.learning) {
+      this.book.root.title =
+        "Click a word to study it. Click padding or press Enter for appearance.";
+      this.book.root.setAttribute(
+        "aria-label",
+        "Reading mode captions. Click words to study; press Enter for appearance.",
+      );
+    }
     this.controls.className = "trf-focus-tools";
     this.transcript.type =
       this.follow.type =
@@ -63,6 +102,34 @@ export class FocusView {
     this.transcript.setAttribute("aria-expanded", "false");
     this.transcript.addEventListener("click", () => this.toggleTranscript());
     this.controls.append(this.reading, this.centered, this.transcript);
+    if (this.learning) {
+      const learn = document.createElement("button");
+      learn.type = "button";
+      learn.textContent = "Learn current word";
+      learn.addEventListener("click", () => this.capture(this.current));
+      const selection = document.createElement("button");
+      selection.type = "button";
+      selection.textContent = "Save selection";
+      selection.title =
+        "Select a phrase or concept in the transcript or Reading mode first";
+      selection.addEventListener("click", () => {
+        const selected =
+          selectedWords(this.body) ?? selectedWords(this.book.root);
+        if (selected)
+          this.capture(
+            selected.start,
+            this.words
+              .slice(selected.start, selected.end + 1)
+              .map(({ word }) => word.text)
+              .join(" "),
+          );
+        else {
+          this.toggleTranscript(true);
+          this.body.focus();
+        }
+      });
+      this.controls.append(learn, selection);
+    }
 
     this.panel.className = "trf-transcript";
     this.panel.setAttribute("aria-label", "Video transcript");
@@ -87,6 +154,26 @@ export class FocusView {
       this.transcript.focus();
     });
     header.append(title, this.follow, close);
+    if (this.learning) {
+      const study = document.createElement("button");
+      study.type = "button";
+      study.textContent = "Study words";
+      study.title =
+        "Click words to inspect and save them. Turn off to seek; timestamps always seek.";
+      study.setAttribute("aria-pressed", "true");
+      study.addEventListener("click", () => {
+        this.studying = !this.studying;
+        study.setAttribute("aria-pressed", String(this.studying));
+      });
+      const language = document.createElement("select");
+      languageOptions(language, options.language ?? "und");
+      language.setAttribute("aria-label", "Study language");
+      language.title = "Language used for word study";
+      language.addEventListener("change", () =>
+        this.learning?.setLanguage(language.value.trim() || "und"),
+      );
+      header.append(study, language);
+    }
     this.body.className = "trf-transcript-body";
     this.body.tabIndex = 0;
     this.body.setAttribute("aria-label", "Timed caption words");
@@ -96,19 +183,22 @@ export class FocusView {
           ? event.target.closest<HTMLButtonElement>("button[data-word]")
           : null;
       const word = target && this.words[Number(target.dataset.word)];
-      if (!word) return;
-      this.video.currentTime = word.startMs / 1000;
-      window.postMessage(
-        {
-          channel: "trf-youtube",
-          kind: "player-seek",
-          payload: { seconds: word.startMs / 1000 },
-        },
-        window.location.origin,
-      );
-      // Paused playback presents no frames, so redraw at the selected word now.
-      this.video.dispatchEvent(new Event("seeked"));
-      this.update(word.startMs);
+      if (
+        !word ||
+        (target.classList.contains("trf-transcript-word") &&
+          window.getSelection()?.isCollapsed === false)
+      )
+        return;
+      if (
+        this.learning &&
+        this.studying &&
+        !event.altKey &&
+        target.classList.contains("trf-transcript-word")
+      ) {
+        this.capture(Number(target.dataset.word), undefined, target);
+        return;
+      }
+      this.seek(Number(target.dataset.word));
     });
     for (const type of ["wheel", "touchmove"])
       this.body.addEventListener(type, () => this.stopFollowing(), {
@@ -216,8 +306,47 @@ export class FocusView {
       fragment.append(row);
     }
     this.body.append(fragment);
+    this.learning?.attach(
+      this.body,
+      this.words.map(({ word }) => word.text),
+    );
     this.built = true;
     this.mark(this.current, true);
+  }
+
+  private seek(index: number): void {
+    const word = this.words[index];
+    if (!word) return;
+    this.video.currentTime = word.startMs / 1000;
+    window.postMessage(
+      {
+        channel: "trf-youtube",
+        kind: "player-seek",
+        payload: { seconds: word.startMs / 1000 },
+      },
+      window.location.origin,
+    );
+    // Paused playback presents no frames, so redraw at the selected word now.
+    this.video.dispatchEvent(new Event("seeked"));
+    this.update(word.startMs);
+  }
+
+  private capture(index: number, term?: string, target?: HTMLElement): void {
+    if (!this.words[index]) return;
+    this.video.pause();
+    this.learning?.capture(
+      term ?? this.words[index].word.text,
+      {
+        title: document.title.replace(/ - YouTube$/, ""),
+        url: location.href,
+        context: this.words
+          .slice(Math.max(0, index - 8), index + 17)
+          .map(({ word }) => word.text)
+          .join(" "),
+        seconds: this.words[index].startMs / 1000,
+      },
+      target ?? (term === undefined ? this.buttons[index] : undefined),
+    );
   }
 
   private display(text: string): string {
@@ -267,6 +396,7 @@ export class FocusView {
   setHidden(hidden: boolean): void {
     if (this.hidden === hidden) return;
     this.hidden = hidden;
+    if (hidden) this.learning?.panel.close();
     this.controls.hidden = hidden;
     this.panel.hidden = hidden || !this.open;
     this.syncReading();
@@ -281,6 +411,7 @@ export class FocusView {
     this.controls.remove();
     this.panel.remove();
     this.book.destroy();
+    this.learning?.destroy();
   }
 }
 
