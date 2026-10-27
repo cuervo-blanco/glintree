@@ -215,6 +215,7 @@ async function start(): Promise<void> {
   );
   overlay.mount(found.player);
   const focus = new FocusView(found.player, found.video, words, {
+    language: pickTrack(tracks, settings.language)?.languageCode ?? "und",
     onCenter: (readingCentered) => {
       applySettings({ ...settings, readingCentered });
       void saveSettings({ readingCentered });
