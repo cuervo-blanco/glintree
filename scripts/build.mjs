@@ -28,6 +28,7 @@ const entries = {
   background: "src/background/index.ts",
   extract: "src/article/extract.ts",
   article: "src/article/index.ts",
+  learn: "src/learning/index.ts",
   ...(dev
     ? {
         modes: "src/dev/modes.ts",
@@ -40,9 +41,14 @@ const entries = {
  *  extension root rather than a web origin. */
 async function buildCss() {
   const styles = await Promise.all(
-    ["reader", "controls", "player", "focus"].map((name) =>
-      readFile(resolve(root, `src/content/${name}.css`), "utf8"),
-    ),
+    [
+      "brand",
+      "content/reader",
+      "content/controls",
+      "content/player",
+      "content/focus",
+      "learning/learning",
+    ].map((name) => readFile(resolve(root, `src/${name}.css`), "utf8")),
   );
   const fonts = await readFile(
     resolve(root, "src/reader-core/fonts.css"),
@@ -87,6 +93,11 @@ async function copyStatic() {
     resolve(root, "node_modules/@mozilla/readability/LICENSE.md"),
     resolve(outdir, "READABILITY-LICENSE.md"),
   );
+  for (const extension of ["html", "css"])
+    await cp(
+      resolve(root, `src/learning/learn.${extension}`),
+      resolve(outdir, `learn.${extension}`),
+    );
   if (dev) {
     // Emitted at the dist root on purpose: `buildCss` rewrites font urls to be
     // relative, so a harness one directory deeper would render in a fallback
