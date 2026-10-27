@@ -111,8 +111,12 @@
 }
 
 .trf-reader ~ .trf-transcript :focus-visible {
-  outline: 2px solid #d2694a;
+  outline: 2px solid var(--trf-brand-accent);
   outline-offset: 1px;
+}
+
+.trf-reader ~ .trf-transcript .trf-transcript-word.trf-current {
+  color: var(--trf-brand-accent);
 }
 
 #movie_player.trf-transcript-open .trf-reader-status {
