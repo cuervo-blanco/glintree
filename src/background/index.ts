@@ -1,6 +1,9 @@
+import { installLearningMessages } from "../learning/background";
 import { articleFromText } from "../article/model";
 import { forgetArticle, openArticle } from "../article/session";
 import type { ArticleResult } from "../article/extraction";
+
+installLearningMessages();
 
 /** The toolbar opens settings; page reading is an explicit context-menu action. */
 chrome.action.onClicked.addListener(() => {
@@ -11,13 +14,13 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: "read-article",
-      title: "Read this page with TextReadsFast",
+      title: "Read this page with Glintree",
       contexts: ["page"],
       documentUrlPatterns: ["https://*/*", "http://*/*"],
     });
     chrome.contextMenus.create({
       id: "read-selection",
-      title: "Read selected text with TextReadsFast",
+      title: "Read selected text with Glintree",
       contexts: ["selection"],
       documentUrlPatterns: ["https://*/*", "http://*/*"],
     });
