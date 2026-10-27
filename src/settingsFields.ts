@@ -338,6 +338,7 @@ export const FIELDS: Field[] = [
       { value: "es", label: "Español" },
       { value: "hi", label: "हिन्दी (Hindi)" },
       { value: "bn", label: "বাংলা (Bengali)" },
+      { value: "zh", label: "中文 (Chinese)" },
     ],
   },
   {
