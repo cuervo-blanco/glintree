@@ -1,7 +1,7 @@
 .trf-article {
   --trf-article-text: #e8e6e3;
   --trf-article-faded: #9b9c9f;
-  --trf-article-accent: #e4572e;
+  --trf-article-accent: var(--trf-brand-accent);
   --trf-article-font: "Literata", Georgia, serif;
   --trf-article-size: 22px;
   --trf-toolbar-height: 110px;
