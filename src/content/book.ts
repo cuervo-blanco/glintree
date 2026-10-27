@@ -23,6 +23,7 @@ export class BookView {
     reader: HTMLElement,
     private words: TimedWord[],
     onSettings: () => void,
+    private onWordsRendered = (): void => {},
   ) {
     this.root.className = "trf-book";
     this.root.hidden = true;
@@ -165,6 +166,7 @@ export class BookView {
         this.spans.push(span);
       }
       this.text.replaceChildren(content);
+      this.onWordsRendered();
       this.line = null;
     }
     this.mark(this.current, true);
