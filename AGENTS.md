@@ -4,12 +4,25 @@ Guidance for AI coding assistants working in this repository.
 
 ## Product
 
-A web article and YouTube caption tool for language learning and faster reading. The player has
-an activation switch, editable captions, Focus mode and a timed transcript panel.
-The toolbar icon opens settings directly. Reading mode adds book-like context
-inside Focus/fullscreen; the independent transcript sidebar stays available.
-There is no popup, profile gallery, old study dashboard, AI assistant, library,
-notes, export system or provider API key.
+Glintree is an independent learning tool for languages, words and concepts,
+using articles, YouTube and entertainment as source material. See
+`docs/PRODUCT.md` for the direction and the boundary between shipped and planned
+features. It retains its TextReadsFast reading foundation and original MIT notices.
+The toolbar opens settings directly; collection and text reading have their own
+tabs. The player retains activation, appearance, Focus, Reading and transcript.
+There is no popup, profile gallery, old study dashboard, AI assistant or provider key.
+
+The new collection in `src/learning/` stores explicit word/phrase/concept saves,
+meanings, examples, lists, source excerpts and review state. It does not consume
+legacy library, assistant, notes or session records. All collection writes pass
+through the background's serialized checked message handler. Keep imports atomic
+and preserve personal meanings, progress and review history on repeat imports.
+Backups merge without overwriting existing local meanings/review state.
+Keep source terms/timings independent of romanization; matching is language scoped,
+with `und` concepts shared across languages. Learning decoration must not change
+font geometry or obscure the focal grapheme. Cards require a saved meaning.
+Do not invent dictionary definitions or add network lookup without a deliberate
+source/licensing/privacy decision. Imported files and saved items render as text.
 
 YouTube supplies the transcript and timings up front. The current caption word is a
 lookup against `video.currentTime`. There is no transcription queue,
@@ -44,7 +57,8 @@ prerequisite for this fork.
   Use temporary `activeTab`/`scripting` access from explicit context-menu actions;
   do not add permanent all-site content scripts. The toolbar still opens settings.
   Keep article text in `chrome.storage.session`, clean it up when its tab closes,
-  and keep article preferences in local storage. Never sync or upload article text.
+  and keep article preferences in local storage. Explicit learning saves may keep
+  a bounded source excerpt in the collection. Never sync or upload article text.
   The article WPM clock pauses when its tab is hidden. Its full document keeps
   heading levels, lists, quotes and code; heading/body/code typography differs.
 - The manifest lives in `src/` and is copied to `dist/`. Keep the root manifest-free.
@@ -88,7 +102,10 @@ prerequisite for this fork.
   and keep the independent transcript on the right. Use the same accent ink for
   resize arrows and the current Reading focal letter.
 - The transcript uses the full source words, including words filtered from the
-  reader. Romanization changes display only, never source timings.
+  reader. Romanization changes display only, never source timings. Study words
+  opens capture on a word click; timestamps always seek and preserve pause state.
+  Keep a way to disable study clicks and open appearance from caption padding
+  or keyboard. Learning panels tear down on video navigation and close on ads.
 - The on-player switch must stay available while disabled and without captions.
   YouTube may replace the control bar without changing videos.
 
