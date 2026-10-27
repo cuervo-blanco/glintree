@@ -1,6 +1,6 @@
 # Disclaimer
 
-TextReadsFast for YouTube is an independent, third-party browser extension. It
+Glintree is an independent, third-party browser extension. It
 is **not affiliated with, endorsed by, or sponsored by YouTube, Google LLC, or
 any of their affiliates.** "YouTube" and "Google" are trademarks of Google LLC,
 used here only to describe what the extension works with.
