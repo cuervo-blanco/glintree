@@ -15,7 +15,7 @@
   --bg: #000;
   --text: #e8e6e3;
   --faded: #6e7278;
-  --accent: #e4572e;
+  --accent: var(--trf-brand-accent);
   --edge: rgba(255, 255, 255, 0.08);
 
   /*
@@ -116,7 +116,7 @@
 .trf-reader[data-theme="custom"] {
   --text: var(--trf-custom-text, #e8e6e3);
   --faded: var(--trf-custom-faded, #6e7278);
-  --accent: var(--trf-custom-accent, #e4572e);
+  --accent: var(--trf-custom-accent, var(--trf-brand-accent));
 }
 
 /* Between cues, or paused. Recede rather than disappear, so the reader keeps
