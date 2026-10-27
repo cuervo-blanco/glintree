@@ -1,5 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="22" fill="#101b21"/>
-  <path d="M91 42a37 37 0 1 0 5 40V64H66" fill="none" stroke="#7bc5b5" stroke-width="12" stroke-linecap="square"/>
-  <path d="M85 17v18M76 26h18" stroke="#d4ad72" stroke-width="5"/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="128" height="128" viewBox="0 0 128 128">
+  <svg x="8" y="8" width="112" height="112" viewBox="0 0 36.095276 40.99963" preserveAspectRatio="xMidYMid meet">
+    <defs id="defs1">
+      <linearGradient id="linearGradient9">
+        <stop style="stop-color:#df77c2;stop-opacity:1;" offset="0.29531249" id="stop9" />
+        <stop style="stop-color:#cf36a5;stop-opacity:1;" offset="1" id="stop10" />
+      </linearGradient>
+      <linearGradient xlink:href="#linearGradient9" id="linearGradient10" x1="175.39708" y1="66.746704" x2="178.41161" y2="66.746704" gradientUnits="userSpaceOnUse" />
+    </defs>
+    <g id="layer1" transform="translate(-144.01186,-56.000709)">
+      <circle style="fill:#f6f6f6;fill-opacity:1;stroke-width:1" id="path1-9" cx="178.20525" cy="62.760849" r="1.9018979" />
+      <rect style="fill:#dc7e00;fill-opacity:1;stroke-width:1" id="rect7" width="1.4224052" height="5.1101227" x="181.64964" y="30.911037" ry="0.71120262" transform="rotate(8.005803)" />
+      <rect style="fill:#dc7e00;fill-opacity:1;stroke-width:1" id="rect8" width="1.4224052" height="5.1101227" x="185.73474" y="-17.353823" ry="0.71120262" transform="rotate(23.058635)" />
+      <path style="font-size:50.8px;fill:#008080" d="m 176.92768,93.552483 c -2.01745,0.926041 -4.22507,1.736328 -6.62286,2.430859 -2.38125,0.677995 -4.68808,1.016992 -6.9205,1.016992 -2.87735,0 -5.51491,-0.396875 -7.9127,-1.190625 -2.39779,-0.79375 -4.44004,-1.984375 -6.12676,-3.571875 -1.70325,-1.604036 -3.0179,-3.604947 -3.94394,-6.002734 -0.92604,-2.414323 -1.38906,-5.233789 -1.38906,-8.458398 0,-5.903516 1.71979,-10.558529 5.15937,-13.965039 3.45612,-3.423047 8.19382,-5.13457 14.21309,-5.13457 2.10013,0 4.2416,0.256315 6.42441,0.768945 2.19935,0.496093 5.72829,1.216705 7.58944,3.00891 1.15065,1.466815 1.36191,1.791972 0.41258,3.459838 -0.38885,0.449315 -0.79527,0.875943 -1.93366,0.899922 -1.05193,-0.159218 -1.43615,-0.414335 -1.65313,-0.547381 -0.99703,-0.611349 -1.93476,-1.182357 -2.87734,-1.612305 -1.14101,-0.51263 -2.43912,-0.93431 -3.89433,-1.265039 -1.43867,-0.347265 -3.07578,-0.520898 -4.91133,-0.520898 -4.13411,0 -7.40833,1.331185 -9.82266,3.993554 -2.39779,2.645833 -3.59668,6.234245 -3.59668,10.765235 0,4.779036 1.25677,8.499739 3.77031,11.162109 2.51355,2.645833 5.93659,3.96875 10.26914,3.96875 1.5875,0 3.16673,-0.157096 4.7377,-0.471289 1.5875,-0.314193 2.97656,-0.719336 4.16719,-1.21543 v -9.053711 h -9.89707 v -4.316015 h 14.75879 z" id="text1" aria-label="G" />
+      <rect style="fill:#dc7e00;fill-opacity:1;stroke-width:1" id="rect6" width="1.4224052" height="5.1101227" x="144.15622" y="110.28283" ry="0.71120262" transform="rotate(-19.143817)" />
+      <circle style="fill:#f6f6f6;fill-opacity:1;stroke-width:1" id="path1" cx="175.50537" cy="62.187637" r="1.9018979" />
+      <ellipse style="fill:url(#linearGradient10);fill-opacity:1;stroke-width:1" id="path3" cx="176.90434" cy="66.746704" rx="1.5072633" ry="1.3521038" />
+      <ellipse style="fill:#000000;fill-opacity:1;stroke-width:1" id="path2" cx="176.74879" cy="62.662258" rx="0.44331276" ry="0.46547839" />
+      <ellipse style="fill:#000000;fill-opacity:1;stroke-width:1" id="ellipse2" cx="178.69937" cy="62.706589" rx="0.44331276" ry="0.46547839" />
+    </g>
+  </svg>
 </svg>
