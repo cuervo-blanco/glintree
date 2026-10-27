@@ -43,14 +43,12 @@
   flex-wrap: wrap;
 }
 .trf-learning-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 22px;
   text-decoration: none;
   font-weight: 600;
-}
-.trf-learning-brand span {
-  border: 1px solid var(--trf-brand-accent);
-  padding: 2px 8px;
-  margin-right: 8px;
 }
 .trf-learning-masthead p {
   color: #a9bdbd;
