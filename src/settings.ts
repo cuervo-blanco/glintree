@@ -191,7 +191,7 @@ export const DEFAULTS: Settings = {
   // Custom starts from the default text colours.
   customText: "#e8e6e3",
   customFaded: "#6e7278",
-  customAccent: "#e4572e",
+  customAccent: "#7bc5b5",
   motion: "dynamic",
   fontStyle: "normal",
   textCase: "none",
